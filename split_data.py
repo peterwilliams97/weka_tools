@@ -14,6 +14,7 @@ import java.lang.Boolean as Boolean
 
 import weka.core.Instances as Instances
 import weka.classifiers.trees.J48 as J48
+import weka.classifiers.bayes.NaiveBayes as NaiveBayes
 import weka.classifiers.bayes.BayesNet as BayesNet
 import weka.classifiers.functions.MultilayerPerceptron as MLP
 import weka.classifiers.functions.SMO as SMO
@@ -182,7 +183,7 @@ def getAccuracyAlgo(algo, training_filename, test_filename):
     raise ValueException('Cannot be here')
 
 def getAccuracy(training_filename, test_filename):
-    algo_list = [BayesNet(), J48(), SMO()]
+    algo_list = [NaiveBayes(), BayesNet(), J48(), SMO(), MLP()]
     return sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
 
 training_file_base = '.train.arff'
@@ -498,7 +499,7 @@ def crossOver(v1, v2, class_distribution):
     return out
 
 def runGA(base_data, num_instances, test_fraction):
-    num_random_samples = 100
+    num_random_samples = 500
     results = []
     existing_splits = []
     history_of_best = []
@@ -529,9 +530,11 @@ def runGA(base_data, num_instances, test_fraction):
     # First create some random vectors
     while len(existing_splits) < num_random_samples:
         # split_vector = getRandomSplit(num_instances, test_fraction)
+        print len(existing_splits), ': ',
         split_vector = getRandomSplitDict(class_distribution)
         accuracy = getAccuracyForSplit(base_data, split_vector)
         addSplit(split_vector)
+    print
 
     results.sort(key = lambda x: -x['score'])
     if False:
@@ -571,7 +574,7 @@ def runGA(base_data, num_instances, test_fraction):
         # Test for convergence
         convergence_number = 10
         results.sort(key = lambda x: -x['score'])
-        print [x['score'] for x in results[:9]]
+        print ['%.3f%%' % x['score'] for x in results[:10]]
 
         history_of_best.append(results[0]['score'])
         if len(history_of_best) >= convergence_number:
@@ -588,7 +591,7 @@ def runGA(base_data, num_instances, test_fraction):
     accuracy = getAccuracyForSplit(base_data, results[0]['split'])
     print 'accuracy =', accuracy 
     print showSplit(results[0]['split'])
-    for (algo,name) in [(BayesNet(),'BayesNet'), (J48(),'J48'), (SMO(),'SMO'), (MLP(),'MLP')]:
+    for (algo,name) in [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48(),'J48'), (SMO(),'SMO'), (MLP(),'MLP')]:
         eval = getEvalAlgo(algo, test_filename, training_filename)
         print name, '---------------------------------'
         print eval
