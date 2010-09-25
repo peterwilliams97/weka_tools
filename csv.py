@@ -1,3 +1,4 @@
+from __future__ import division
 """
 manipulate .csv files
 Clean advertisement detection trainging set file

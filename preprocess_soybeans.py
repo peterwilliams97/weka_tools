@@ -132,6 +132,8 @@ def applyAttrs(data, attrs):
 	return out
 
 def getClassDistribution(data):
+	""" Returns the number of each class in the data set
+		Class is assumed to be in column 0 """
 	classes = set([instance[0] for instance in data])
 	class_distribution = {}.fromkeys(classes, 0)
 	for instance in data:

@@ -161,18 +161,17 @@ def runClassifierAlgo(algo, filename, test_filename, do_model, do_eval, do_predi
 
 def runClassifier(filename, test_filename, do_model, do_eval, do_predict):
     print '*',
-    return runClassifierAlgo(SMO(), filename, test_filename, do_model, do_eval, do_predict)
+    return runClassifierAlgo(BayesNet(), filename, test_filename, do_model, do_eval, do_predict)
     #return runClassifierBayes(filename, test_filename, do_model, do_eval, do_predict)
 
 classify_tag = 'Correctly Classified Instances'
 
-def getEval(training_filename, test_filename):
-    result = runClassifier(training_filename, test_filename, False, True, False)
+def getEvalAlgo(algo, training_filename, test_filename):
+    result = runClassifierAlgo(algo, training_filename, test_filename, False, True, False)
     return result['eval'].strip()
 
-def getAccuracy(training_filename, test_filename):
-    result = runClassifier(training_filename, test_filename, False, True, False)
-    lines = result['eval'].strip().split('\n')
+def getAccuracyAlgo(algo, training_filename, test_filename):
+    lines = getEvalAlgo(algo, training_filename, test_filename).split('\n')
     for ln in lines:
         if classify_tag in ln:
             contents = ln[len(classify_tag):]
@@ -181,6 +180,10 @@ def getAccuracy(training_filename, test_filename):
             accuracy = float(parts[1])
             return accuracy
     raise ValueException('Cannot be here')
+
+def getAccuracy(training_filename, test_filename):
+    algo_list = [BayesNet(), J48(), SMO()]
+    return sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
 
 training_file_base = '.train.arff'
 test_file_base = '.test.arff'
@@ -219,7 +222,7 @@ def rm(filename):
         os.remove(filename)
     except:
         pass
-    
+
 def getAccuracyForSplit(base_data, split_vector):
     """ Split data into training and test set, run prediction 
         and return accuracy 
@@ -233,13 +236,84 @@ def getAccuracyForSplit(base_data, split_vector):
     rm(test_filename)
     return accuracy
 
-def getRandomSplit(num_instances, test_fraction):
+def getRandomSplit_(num_instances, test_fraction):
     num_test = int(floor(num_instances*test_fraction))
     split_vector = [(x < num_test) for x in range(num_instances)]
     random.shuffle(split_vector)
     return split_vector
 
-WEIGHT_RATIO = 0.5
+def getRandomSplitDict(class_distribution):
+    split_vector = []
+    for k in sorted(class_distribution.keys()):
+        v = class_distribution[k]
+        part_vector = [(x < v['num_test']) for x in range(v['num'])]
+        random.shuffle(part_vector)
+        split_vector = split_vector + part_vector
+    return split_vector
+
+def getClassDistribution(data):
+    """ Returns the number of each class in the data set
+        Class is assumed to be in column 0 """
+    classes = set([instance[0] for instance in data])
+    class_counts = {}.fromkeys(classes, 0)
+    class_distribution = {}
+    for k in classes:
+        class_distribution[k] = {'num':0}
+
+    for instance in sorted(data, key = lambda x: x[0]):
+        k = instance[0]
+        class_distribution[k]['num'] = class_distribution[k]['num'] + 1
+
+    # Need at least 2 members. 1 for training and 1 for test  
+    for k in classes:
+        if class_distribution[k]['num'] < 2:
+            class_distribution.pop(k)
+    classes = class_distribution.keys()
+
+    start = 0   
+    for k in sorted(classes):
+        assert(class_distribution[k]['num'] > 0)
+        class_distribution[k]['start'] = start
+        class_distribution[k]['end'] = start + class_distribution[k]['num']
+        start = class_distribution[k]['end']
+
+    return class_distribution
+
+def getClassDistributionForSplits(data, test_fraction):
+    class_distribution = getClassDistribution(data)
+
+    num_instances = sum([v['num'] for v in class_distribution.values()])
+    num_test = int(floor(num_instances*test_fraction))
+    keys = sorted(class_distribution.keys(), key = lambda k: class_distribution[k]['num'])
+
+    # Start with fraction rounded down
+    for k in keys:
+        class_distribution[k]['num_test'] = max(2,int(floor(class_distribution[k]['num']*test_fraction)))
+        assert(class_distribution[k]['num_test'] > 0)
+
+    # Make whole distribution have correct fraction 
+    # Start with classes with more members
+    for k in keys:
+        if sum([v['num_test'] for v in class_distribution.values()]) >= num_test:
+            break
+        class_distribution[k]['num_test'] = class_distribution[k]['num_test'] + 1
+
+    for k in keys:
+        if sum([v['num_test'] for v in class_distribution.values()]) <= num_test:
+            break
+        class_distribution[k]['num_test'] = class_distribution[k]['num_test'] - 1
+        
+    for k in sorted(keys):
+        print '%28s' % k, class_distribution[k], '%.2f' % (class_distribution[k]['num_test']/class_distribution[k]['num'])
+        assert(class_distribution[k]['num_test'] > 0)
+
+    return class_distribution
+
+    split_vector = [(x < num_test) for x in range(num_instances)]
+    random.shuffle(split_vector)
+    return split_vector
+
+WEIGHT_RATIO = 0.8
 
 def applyWeights(roulette_in):
     """ Add and 'idx' and 'weight' keys to roulette dicts 
@@ -289,7 +363,7 @@ def makeShuffleList(size, max_val):
         if not i in shuffle_list:
             shuffle_list.append(i)
     return shuffle_list
-    
+
 def mutate(split):
     if False:
         shuffle_list = []
@@ -311,9 +385,10 @@ def mutate(split):
 def crossOver_(c1, c2):
     """ Swap half the elements in c1 and c2 """
     assert(len(c1) == len(c2))
-    assert(c1 != c2)
+    assert(len(c1) > 0)
+    assert(len(c2) > 0)
     n = len(c1)
-    
+
     if False:
         print crossOver_
         print c1[:30]
@@ -367,23 +442,49 @@ def crossOver_(c1, c2):
 
     return (sorted(d1), sorted(d2))
 
+def crossOverDist(c1, c2, class_distribution):
+    assert(c1 != c2)
+    d1 = []
+    d2 = []
+    for v in class_distribution.values():
+        c1v = [i for i in c1 if v['start'] <= i and i < v['end']]
+        c2v = [i for i in c2 if v['start'] <= i and i < v['end']]
+        if len(c1v) == 0:
+            print 'v', v
+        if len(c2v) == 0:
+            print 'v', v
+        d1v,d2v = crossOver_(c1v, c2v)
+        d1 = d1 + d1v
+        d2 = d2 + d2v
+    d1.sort()
+    d2.sort()
+    assert(len(d1) > 0)
+    assert(len(d2) > 0)
+    return (d1,d2)
+
 def getIndexes(split_vector):
-    return [i for i,v in enumerate(split_vector) if v]
+    return sorted([i for i,v in enumerate(split_vector) if v])
 
 def getVector(indexes, size):
     return [i in indexes for i in range(size)]
 
-def uniqueCrossOver_(c1, c2):
+def uniqueCrossOver_(c1, c2, class_distribution):
     for i in range(1000):
-        d1,d2 = crossOver_(c1, c2)
+        #d1,d2 = crossOver_(c1, c2)
+        d1,d2 = crossOverDist(c1, c2, class_distribution)
         if d1 != d2:
             return d1,d2
+    if False:
+        print 'd1', d1[:40]
+        print 'd2', d2[:40]
     raise ValueException('Cannot be here')
 
-def crossOver(v1, v2):
+def crossOver(v1, v2, class_distribution):
     c1,c2 = getIndexes(v1), getIndexes(v2)
     assert(c1 != c2)
-    d1,d2 = uniqueCrossOver_(c1,c2)
+    d1,d2 = uniqueCrossOver_(c1,c2, class_distribution)
+    assert(len(d1) > 0)
+    assert(len(d2) > 0)
     out = [getVector(d, len(v1)) for d in (d1,d2)]
     if False:
         print
@@ -391,6 +492,8 @@ def crossOver(v1, v2):
         print 'c2', showSplit(v2)
         print 'd1', showSplit(out[0])
         print 'd2', showSplit(out[1])
+        print 'd1', d1[:40]
+        print 'd2', d2[:40]
     
     return out
 
@@ -399,6 +502,13 @@ def runGA(base_data, num_instances, test_fraction):
     results = []
     existing_splits = []
     history_of_best = []
+
+    global base_classes
+    # Data needs to be sorted by class for the class_distibution splits to line up
+    base_data.sort()
+    class_distribution = getClassDistributionForSplits(base_data, test_fraction)
+    base_classes = class_distribution.keys()
+    base_data = [x for x in base_data if x[0] in class_distribution.keys()]
 
     def getScoreDict(split_vector):
         accuracy = getAccuracyForSplit(base_data, split_vector)
@@ -418,7 +528,8 @@ def runGA(base_data, num_instances, test_fraction):
 
     # First create some random vectors
     while len(existing_splits) < num_random_samples:
-        split_vector = getRandomSplit(num_instances, test_fraction)
+        # split_vector = getRandomSplit(num_instances, test_fraction)
+        split_vector = getRandomSplitDict(class_distribution)
         accuracy = getAccuracyForSplit(base_data, split_vector)
         addSplit(split_vector)
 
@@ -433,12 +544,12 @@ def runGA(base_data, num_instances, test_fraction):
         
     for cnt in range(1000):
         #print 'cnt =', cnt
-        if not random.randrange(20) == 1:
+        if True or not random.randrange(20) == 1:
             found = False
             for j in range(10):
                 i1,i2 = spinRouletteWheelTwice(results)
                 #print (i1,i2),
-                c1,c2 = crossOver(results[i1]['split'], results[i2]['split'])
+                c1,c2 = crossOver(results[i1]['split'], results[i2]['split'], class_distribution)
                 if not c1 in existing_splits and not c2 in existing_splits and not c1==c2:
                     found = True
                     break
@@ -477,8 +588,10 @@ def runGA(base_data, num_instances, test_fraction):
     accuracy = getAccuracyForSplit(base_data, results[0]['split'])
     print 'accuracy =', accuracy 
     print showSplit(results[0]['split'])
-    eval = getEval(test_filename, training_filename)
-    print eval
+    for (algo,name) in [(BayesNet(),'BayesNet'), (J48(),'J48'), (SMO(),'SMO'), (MLP(),'MLP')]:
+        eval = getEvalAlgo(algo, test_filename, training_filename)
+        print name, '---------------------------------'
+        print eval
  
 if __name__ == '__main__':
     if False:
@@ -488,19 +601,17 @@ if __name__ == '__main__':
         accuracy = getAccuracy(sys.argv[1], sys.argv[1])
         print 'accuracy =', accuracy
 
-    global base_classes, base_attrs 
+    global base_attrs 
 
-    if (not (len(sys.argv) == 4)):
-        print "Usage: split_data.py <base-file> <class-file> <attr-file>"
+    if (not (len(sys.argv) == 3)):
+        print "Usage: split_data.py <base-file> <attr-file>"
         sys.exit()
 
     base_file = sys.argv[1]
-    classes_file = sys.argv[2]
-    attrs_file = sys.argv[3]
+    attrs_file = sys.argv[2]
 
     base_data, _ = csv.readCsvRaw2(base_file, True)
     base_data.sort()
-    base_classes = preprocess_soybeans.parseClasses(classes_file)
     base_attrs = preprocess_soybeans.parseAttrs(attrs_file)
     test_fraction = 0.2
 
