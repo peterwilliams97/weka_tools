@@ -1,0 +1,1 @@
+jython split_data.py \dev\5045assignment1\soybean-large.data.named.csv \dev\5045assignment1\soybean.classes  \dev\5045assignment1\soybean.attributes
