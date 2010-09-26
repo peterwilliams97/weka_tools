@@ -1,0 +1,1 @@
+set CLASSPATH=%CLASSPATH%;\java\Weka-3-6\weka.jar

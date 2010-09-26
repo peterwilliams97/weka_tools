@@ -499,13 +499,15 @@ def crossOver(v1, v2, class_distribution):
     return out
 
 def runGA(base_data, num_instances, test_fraction):
-    num_random_samples = 500
+    # Create just enough to seed the set with a good coverage
+    num_random_samples = 20
     results = []
     existing_splits = []
     history_of_best = []
+    best_score = 0.0
 
     global base_classes
-    # Data needs to be sorted by class for the class_distibution splits to line up
+    # Data needs to be sorted by class for the class_distribution splits to line up
     base_data.sort()
     class_distribution = getClassDistributionForSplits(base_data, test_fraction)
     base_classes = class_distribution.keys()
@@ -536,7 +538,11 @@ def runGA(base_data, num_instances, test_fraction):
         addSplit(split_vector)
     print
 
+    # Write out the best result in case we crash
     results.sort(key = lambda x: -x['score'])
+    test_filename, training_filename = makeTrainingTestSplit(base_data, results[0]['split'], 'best')
+    best_score = results[0]['score']
+    
     if False:
         print [x['score'] for x in results[:10]]
         for x in results[:10]:
@@ -574,7 +580,10 @@ def runGA(base_data, num_instances, test_fraction):
         # Test for convergence
         convergence_number = 10
         results.sort(key = lambda x: -x['score'])
-        print ['%.3f%%' % x['score'] for x in results[:10]]
+        print ['%.1f%%' % x['score'] for x in results[:10]]
+        if results[0]['score'] > best_score:
+            test_filename, training_filename = makeTrainingTestSplit(base_data, results[0]['split'], 'best')
+            best_score = results[0]['score']
 
         history_of_best.append(results[0]['score'])
         if len(history_of_best) >= convergence_number:
