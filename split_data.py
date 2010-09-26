@@ -121,9 +121,9 @@ def getMultiBoost():
 # If true then try to find worst performer, else try to find best performer
 do_worst = False
 def getAccuracy(training_filename, test_filename):
-    #algo_list = [NaiveBayes(), BayesNet(), J48(), RandomForest(), JRip(), KStar(), SMO(), MLP(), MultiBoost()]
+    algo_list = [NaiveBayes(), BayesNet(), J48(), RandomForest(), JRip(), KStar(), SMO(), MLP(), MultiBoost()]
 
-    algo_list = [JRip(), KStar()]# , RandomForest(), getMultiBoost()]
+    #algo_list = [JRip(), KStar()]# , RandomForest(), getMultiBoost()]
 
     #algo_list = [J48()]
     #algo_list = [NaiveBayes()]
@@ -422,7 +422,7 @@ def crossOver(v1, v2, class_distribution):
 
 def runGA(base_data, num_instances, test_fraction):
     # Create just enough to seed the set with a good coverage
-    num_random_samples = 10
+    num_random_samples = 20
     results = []
     existing_splits = []
     history_of_best = []
