@@ -9,21 +9,29 @@ import sys, os, random
 from math import *
 
 import java.io.FileReader as FileReader
+import java.lang.String as String
 import java.lang.StringBuffer as StringBuffer
 import java.lang.Boolean as Boolean
 
 import weka.core.Instances as Instances
-import weka.classifiers.trees.J48 as J48
+import weka.classifiers.Evaluation as Evaluation
+import weka.core.Range as Range
+
 import weka.classifiers.bayes.NaiveBayes as NaiveBayes
 import weka.classifiers.bayes.BayesNet as BayesNet
 import weka.classifiers.functions.MultilayerPerceptron as MLP
 import weka.classifiers.functions.SMO as SMO
-import weka.classifiers.Evaluation as Evaluation
-import weka.core.Range as Range
+import weka.classifiers.trees.J48 as J48
+import weka.classifiers.trees.RandomForest as RandomForest
+import weka.classifiers.rules.JRip as JRip
+import weka.classifiers.lazy.KStar as KStar
+import weka.classifiers.meta.MultiBoostAB as MultiBoost
 
 import csv, preprocess_soybeans
 
+# Set random seed so that each run gives same results
 random.seed(555)
+
 
 """
 An example of using Weka classifiers (i.e., J48) from within Jython.
@@ -41,100 +49,23 @@ Note: needs Weka 3.6.x to run (due to changes in the
 
 """
 
-def runClassifierJ48(filename, test_filename, do_model, do_eval, do_predict):
+# The column containing the class
+class_index = 0
+
+def runClassifierAlgo(algo, training_filename, test_filename, do_model, do_eval, do_predict):
     # load data file
     # print 'Loading data...', filename
-    file = FileReader(filename)
-    data = Instances(file)
+    training_file = FileReader(training_filename)
+    training_data = Instances(training_file)
     test_file = FileReader(test_filename)
     test_data = Instances(test_file)
 
    # set the class Index - the index of the dependent variable
-    data.setClassIndex(0)
-    test_data.setClassIndex(0)
+    training_data.setClassIndex(class_index)
+    test_data.setClassIndex(class_index)
 
     # create the model
-    j48 = J48()
-    j48.buildClassifier(data)   
-
-    evaluation = None
-    # only a trained classifier can be evaluated
-    if do_eval or do_predict:
-        evaluation = Evaluation(test_data)
-        buffer = StringBuffer()             # buffer for the predictions
-        attRange = Range()                  # no additional attributes output
-        outputDistribution = Boolean(False) # we don't want distribution
-        evaluation.evaluateModel(j48, test_data, [buffer, attRange, outputDistribution])
-
-    # print out the built model
-    if do_model and False:
-        print '--> Generated model:\n'
-        print j48.toString()
-
-    if do_eval and False:
-        print '--> Evaluation:\n'
-        print evaluation.toSummaryString()
-
-    if do_predict and False:
-        print '--> Predictions:\n'
-        print buffer
-        
-    return {'model':str(j48), 'eval':str(evaluation.toSummaryString()), 'predict':str(buffer) }
-
-def runClassifierBayes(filename, test_filename, do_model, do_eval, do_predict):
-    # load data file
-    # print 'Loading data...', filename
-    file = FileReader(filename)
-    data = Instances(file)
-    test_file = FileReader(test_filename)
-    test_data = Instances(test_file)
-
-   # set the class Index - the index of the dependent variable
-    data.setClassIndex(0)
-    test_data.setClassIndex(0)
-
-    # create the model
-    j48 = BayesNet()
-    j48.buildClassifier(data)   
-
-    evaluation = None
-    # only a trained classifier can be evaluated
-    if do_eval or do_predict:
-        evaluation = Evaluation(test_data)
-        buffer = StringBuffer()             # buffer for the predictions
-        attRange = Range()                  # no additional attributes output
-        outputDistribution = Boolean(False) # we don't want distribution
-        evaluation.evaluateModel(j48, test_data, [buffer, attRange, outputDistribution])
-
-    # print out the built model
-    if do_model and False:
-        print '--> Generated model:\n'
-        print j48.toString()
-
-    if do_eval and False:
-        print '--> Evaluation:\n'
-        print evaluation.toSummaryString()
-
-    if do_predict and False:
-        print '--> Predictions:\n'
-        print buffer
-        
-    return {'model':str(j48), 'eval':str(evaluation.toSummaryString()), 'predict':str(buffer) }
-
-def runClassifierAlgo(algo, filename, test_filename, do_model, do_eval, do_predict):
-    # load data file
-    # print 'Loading data...', filename
-    file = FileReader(filename)
-    data = Instances(file)
-    test_file = FileReader(test_filename)
-    test_data = Instances(test_file)
-
-   # set the class Index - the index of the dependent variable
-    data.setClassIndex(0)
-    test_data.setClassIndex(0)
-
-    # create the model
-    algo.buildClassifier(data)   
+    algo.buildClassifier(training_data)
 
     evaluation = None
     # only a trained classifier can be evaluated
@@ -182,14 +113,33 @@ def getAccuracyAlgo(algo, training_filename, test_filename):
             return accuracy
     raise ValueException('Cannot be here')
 
+def getMultiBoost():
+    multi_boost = MultiBoost()
+    multi_boost.setOptions(['-W weka.classifiers.functions.SMO'])
+    return multi_boost
+
+# If true then try to find worst performer, else try to find best performer
+do_worst = False
 def getAccuracy(training_filename, test_filename):
-    algo_list = [NaiveBayes(), BayesNet(), J48(), SMO(), MLP()]
-    return sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
+    #algo_list = [NaiveBayes(), BayesNet(), J48(), RandomForest(), JRip(), KStar(), SMO(), MLP(), MultiBoost()]
+
+    algo_list = [JRip(), KStar()]# , RandomForest(), getMultiBoost()]
+
+    #algo_list = [J48()]
+    #algo_list = [NaiveBayes()]
+    if False:
+        good_list = [MLP()]
+        bad_list = [SMO()]
+        return len(bad_list)*100.0 \
+                + sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in good_list]) \
+                - sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in bad_list])
+    if do_worst:
+        return len(algo_list)*100.0 - sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
+    else:
+        return  sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
 
 training_file_base = '.train.arff'
 test_file_base = '.test.arff'
-#base_classes = None
-#base_attrs = None
 
 def showSplit(split_vector):
     return ''.join(['|' if a else '.' for a in split_vector[:120]])
@@ -230,7 +180,6 @@ def getAccuracyForSplit(base_data, split_vector):
         base_data: entire data set
         split_vector: vector of booleans True/False => sample goes in test/training
     """
-
     training_filename, test_filename = makeTrainingTestSplit(base_data, split_vector, 'temp')
     accuracy = getAccuracy(training_filename, test_filename)
     rm(training_filename)
@@ -253,16 +202,16 @@ def getRandomSplitDict(class_distribution):
     return split_vector
 
 def getClassDistribution(data):
-    """ Returns the number of each class in the data set
-        Class is assumed to be in column 0 """
-    classes = set([instance[0] for instance in data])
+    """ Returns the number of each class in the <data> set
+        Class is assumed to be in column <class_index> """
+    classes = set([instance[class_index] for instance in data])
     class_counts = {}.fromkeys(classes, 0)
     class_distribution = {}
     for k in classes:
         class_distribution[k] = {'num':0}
 
-    for instance in sorted(data, key = lambda x: x[0]):
-        k = instance[0]
+    for instance in sorted(data, key = lambda x: x[class_index]):
+        k = instance[class_index]
         class_distribution[k]['num'] = class_distribution[k]['num'] + 1
 
     # Need at least 2 members. 1 for training and 1 for test  
@@ -271,7 +220,7 @@ def getClassDistribution(data):
             class_distribution.pop(k)
     classes = class_distribution.keys()
 
-    start = 0   
+    start = 0
     for k in sorted(classes):
         assert(class_distribution[k]['num'] > 0)
         class_distribution[k]['start'] = start
@@ -356,7 +305,7 @@ def spinRouletteWheelTwice(roulette):
             return (i1,i2)
 
 def makeShuffleList(size, max_val):
-    """ Return a list of size unique random values in range [0,max_val) """
+    """ Return a list of <size> unique random values in range [0,<max_val>) """
     assert(size <= max_val)
     shuffle_list = []
     while len(shuffle_list) < size:
@@ -372,10 +321,10 @@ def mutate(split):
             i = random.randrange(len(split))
             if not i in shuffle_list:
                 shuffle_list.append(i)
-                
+
     shuffle_list = makeShuffleList(len(split)//20, len(split))
     swaps = [(shuffle_list[i*2],shuffle_list[i*2+1]) for i in range(len(shuffle_list)//2)]
-    
+
     out = split[:]
     for s in swaps:
         x = out[s[0]]
@@ -405,41 +354,14 @@ def crossOver_(c1, c2):
         if x in d1:
             break
     m = min(i1, i2)  # number of non-shared elements
-    
-    if False:
-        print '---------------------'
-        print d1[:30]
-        print d2[:30]
-
+  
     shuffle_list = makeShuffleList(2*(m//2), 2*(m//2))
     swaps = [(shuffle_list[i*2],shuffle_list[i*2+1]) for i in range(len(shuffle_list)//2)]
+
     for i,s in enumerate(swaps):
-        # print '%2d'%i, s
         assert(s[0] < 2* len(swaps))
         assert(s[1] < 2* len(swaps))
         d1[s[0]], d2[s[1]] = d2[s[1]], d1[s[0]] 
-        x = d1[s[0]]
-        d1[s[0]] = d2[s[1]]
-        d1[s[0]] = x
-    #exit()
-        
-    if False:
-        shuffle_list = random.sample(range(m), min(n/2,m))
-        for i in shuffle_list:
-            d1[i], d2[i] = d2[i], d1[i]
-   
-    if False:
-        d1.sort()
-        d2.sort()    
-        print n, i1, i2, m
-        print d1[:30]
-        print d2[:30]
-    
-    if False:
-        assert(sorted(d1) != sorted(d2))
-        for d in (d1,d2):
-            for c in (c1,c2):
-                assert(sorted(d) != sorted(c))
 
     return (sorted(d1), sorted(d2))
 
@@ -454,7 +376,7 @@ def crossOverDist(c1, c2, class_distribution):
             print 'v', v
         if len(c2v) == 0:
             print 'v', v
-        d1v,d2v = crossOver_(c1v, c2v)
+        d1v, d2v = crossOver_(c1v, c2v)
         d1 = d1 + d1v
         d2 = d2 + d2v
     d1.sort()
@@ -500,7 +422,7 @@ def crossOver(v1, v2, class_distribution):
 
 def runGA(base_data, num_instances, test_fraction):
     # Create just enough to seed the set with a good coverage
-    num_random_samples = 20
+    num_random_samples = 10
     results = []
     existing_splits = []
     history_of_best = []
@@ -510,8 +432,10 @@ def runGA(base_data, num_instances, test_fraction):
     # Data needs to be sorted by class for the class_distribution splits to line up
     base_data.sort()
     class_distribution = getClassDistributionForSplits(base_data, test_fraction)
+    
+    # Adjust base_classes and base_data to match class distribution
     base_classes = class_distribution.keys()
-    base_data = [x for x in base_data if x[0] in class_distribution.keys()]
+    base_data = [x for x in base_data if x[class_index] in class_distribution.keys()]
 
     def getScoreDict(split_vector):
         accuracy = getAccuracyForSplit(base_data, split_vector)
@@ -540,8 +464,8 @@ def runGA(base_data, num_instances, test_fraction):
 
     # Write out the best result in case we crash
     results.sort(key = lambda x: -x['score'])
-    test_filename, training_filename = makeTrainingTestSplit(base_data, results[0]['split'], 'best')
-    best_score = results[0]['score']
+    test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if do_worst else 'best')
+    best_score = results[class_index]['score']
     
     if False:
         print [x['score'] for x in results[:10]]
@@ -581,11 +505,11 @@ def runGA(base_data, num_instances, test_fraction):
         convergence_number = 10
         results.sort(key = lambda x: -x['score'])
         print ['%.1f%%' % x['score'] for x in results[:10]]
-        if results[0]['score'] > best_score:
-            test_filename, training_filename = makeTrainingTestSplit(base_data, results[0]['split'], 'best')
-            best_score = results[0]['score']
+        if results[class_index]['score'] > best_score:
+            test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if do_worst else 'best')
+            best_score = results[class_index]['score']
 
-        history_of_best.append(results[0]['score'])
+        history_of_best.append(results[class_index]['score'])
         if len(history_of_best) >= convergence_number:
             converged = True
             for i in range(1, convergence_number):
@@ -596,11 +520,18 @@ def runGA(base_data, num_instances, test_fraction):
                 print '2. Converged after', cnt, 'GA rounds'
                 break
             
-    test_filename, training_filename = makeTrainingTestSplit(base_data, results[0]['split'], 'best')
-    accuracy = getAccuracyForSplit(base_data, results[0]['split'])
+    test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if do_worst else 'best')
+    accuracy = getAccuracyForSplit(base_data, results[class_index]['split'])
+    print 'Results -----------------------------------------------------'
+    print 'do_worst', do_worst
+    print 'WEIGHT_RATIO', WEIGHT_RATIO
+    print 'num_random_samples',num_random_samples
     print 'accuracy =', accuracy 
-    print showSplit(results[0]['split'])
-    for (algo,name) in [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48(),'J48'), (SMO(),'SMO'), (MLP(),'MLP')]:
+    print showSplit(results[class_index]['split'])
+    for (algo,name) in [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48(),'J48'), (JRip(), 'JRip'),
+                        (KStar(), 'KStar'), (RandomForest(), 'RandomForest'), (SMO(),'SMO'), (MLP(),'MLP'), 
+                        (getMultiBoost(), 'MultiBoost')]:
+                                                                                                             
         eval = getEvalAlgo(algo, test_filename, training_filename)
         print name, '---------------------------------'
         print eval

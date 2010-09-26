@@ -1,5 +1,7 @@
 Set of Jython tools to perform data mining tasks using Weka
 
+Needs Jython and Weka.
+
 Uses UCI Michalski and Chilausky [soybean data set](http://archive.ics.uci.edu/ml/machine-learning-databases/soybean/ "soybean data")
 
 1. ** setup.bat** Shows how to set up classpath to use Weka
