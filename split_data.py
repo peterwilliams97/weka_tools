@@ -1,5 +1,21 @@
 from __future__ import division
 """
+A module to split a data set in training and test sets
+
+Finds the splits that give best or worst results in Weka using 
+"Supplied test set" for a set of classification algorithms that 
+can be found in the code below.
+
+
+Requires Jython and the Weka java library weka.jar (see 
+http://github.com/peterwilliams97/weka_tools/blob/master/readme.markdown)
+
+Based on this code example:
+
+    http://www.btbytes.com/2005/11/30/weka-j48-classifier-example-using-jython/
+
+Note: needs Weka 3.6.x to run (due to changes in the weka.classifiers.Evaluation class)
+
 Created on 22/09/2010
 
 @author: peter
@@ -32,29 +48,19 @@ import csv, preprocess_soybeans
 # Set random seed so that each run gives same results
 random.seed(555)
 
-
-"""
-An example of using Weka classifiers (i.e., J48) from within Jython.
-
-Based on this code example:
-
-    http://www.btbytes.com/2005/11/30/weka-j48-classifier-example-using-jython/
-
-Commandline parameter(s):
-
-    first parameter must be the ARFF file one wants to process with J48
-
-Note: needs Weka 3.6.x to run (due to changes in the 
-      weka.classifiers.Evaluation class)
-
-"""
-
 # The column containing the class
 class_index = 0
 
+# Extra output
+verbose = False
+
+# If true then try to find worst performer, else try to find best performer
+do_worst = True
+
+
 def runClassifierAlgo(algo, training_filename, test_filename, do_model, do_eval, do_predict):
-    # load data file
-    # print 'Loading data...', filename
+    """ Run classifier algorithm <algo> on training data in <training_filename> to build a model
+        then run in on data in <test_filename> (equivalent of Weka "Supplied test set") """
     training_file = FileReader(training_filename)
     training_data = Instances(training_file)
     test_file = FileReader(test_filename)
@@ -76,33 +82,30 @@ def runClassifierAlgo(algo, training_filename, test_filename, do_model, do_eval,
         outputDistribution = Boolean(False) # we don't want distribution
         evaluation.evaluateModel(algo, test_data, [buffer, attRange, outputDistribution])
 
-    # print out the built model
-    if do_model and False:
-        print '--> Generated model:\n'
-        print algo.toString()
+    if verbose:
+        if do_model:
+            print '--> Generated model:\n'
+            print algo.toString()
+        if do_eval:
+            print '--> Evaluation:\n'
+            print evaluation.toSummaryString()
+        if do_predict:
+            print '--> Predictions:\n'
+            print buffer
 
-    if do_eval and False:
-        print '--> Evaluation:\n'
-        print evaluation.toSummaryString()
-
-    if do_predict and False:
-        print '--> Predictions:\n'
-        print buffer
-        
     return {'model':str(algo), 'eval':str(evaluation.toSummaryString()), 'predict':str(buffer) }
 
-def runClassifier(filename, test_filename, do_model, do_eval, do_predict):
-    print '*',
-    return runClassifierAlgo(BayesNet(), filename, test_filename, do_model, do_eval, do_predict)
-    #return runClassifierBayes(filename, test_filename, do_model, do_eval, do_predict)
-
-classify_tag = 'Correctly Classified Instances'
-
 def getEvalAlgo(algo, training_filename, test_filename):
+    """ Returns evaluation string for algorithm <algo> built from training data in <training_filename> 
+        and tested on data in <test_filename> """ 
     result = runClassifierAlgo(algo, training_filename, test_filename, False, True, False)
     return result['eval'].strip()
 
+classify_tag = 'Correctly Classified Instances'
+
 def getAccuracyAlgo(algo, training_filename, test_filename):
+    """ Returns accuracy of algorithm <algo> built from training data in <training_filename> 
+        and tested on data in <test_filename> """ 
     lines = getEvalAlgo(algo, training_filename, test_filename).split('\n')
     for ln in lines:
         if classify_tag in ln:
@@ -118,13 +121,10 @@ def getMultiBoost():
     multi_boost.setOptions(['-W weka.classifiers.functions.SMO'])
     return multi_boost
 
-# If true then try to find worst performer, else try to find best performer
-do_worst = False
 def getAccuracy(training_filename, test_filename):
     algo_list = [NaiveBayes(), BayesNet(), J48(), RandomForest(), JRip(), KStar(), SMO(), MLP(), MultiBoost()]
 
     #algo_list = [JRip(), KStar()]# , RandomForest(), getMultiBoost()]
-
     #algo_list = [J48()]
     #algo_list = [NaiveBayes()]
     if False:
@@ -142,9 +142,14 @@ training_file_base = '.train.arff'
 test_file_base = '.test.arff'
 
 def showSplit(split_vector):
+    """ Returns a string showing a list of booleans """
     return ''.join(['|' if a else '.' for a in split_vector[:120]])
 
 def makeTrainingTestSplit(base_data, split_vector, prefix):
+    """ Split <base_data> into training and test data sets. Rows with indexes in 
+        <split_vector> go into training file and remaining go into test file.
+        Writes training and test .arff files and returns their names. 
+        File names are prefixed with <prefix> """
     assert(len(base_data) == len(split_vector))
     num_instances = len(base_data)
 
@@ -175,10 +180,9 @@ def rm(filename):
         pass
 
 def getAccuracyForSplit(base_data, split_vector):
-    """ Split data into training and test set, run prediction 
-        and return accuracy 
-        base_data: entire data set
-        split_vector: vector of booleans True/False => sample goes in test/training
+    """ Split <base_data> into training and test data sets. Rows with indexes in 
+        <split_vector> go into training file and remaining go into test file.
+        Run prediction and return accuracy 
     """
     training_filename, test_filename = makeTrainingTestSplit(base_data, split_vector, 'temp')
     accuracy = getAccuracy(training_filename, test_filename)
@@ -186,16 +190,10 @@ def getAccuracyForSplit(base_data, split_vector):
     rm(test_filename)
     return accuracy
 
-def getRandomSplit_(num_instances, test_fraction):
-    num_test = int(floor(num_instances*test_fraction))
-    split_vector = [(x < num_test) for x in range(num_instances)]
-    random.shuffle(split_vector)
-    return split_vector
-
-def getRandomSplitDict(class_distribution):
+def getRandomSplit(class_distribution):
+    """ Return a random split with the same distribution as <class_distribution> """
     split_vector = []
-    for k in sorted(class_distribution.keys()):
-        v = class_distribution[k]
+    for k,v in sorted(class_distribution.items()):
         part_vector = [(x < v['num_test']) for x in range(v['num'])]
         random.shuffle(part_vector)
         split_vector = split_vector + part_vector
@@ -212,7 +210,7 @@ def getClassDistribution(data):
 
     for instance in sorted(data, key = lambda x: x[class_index]):
         k = instance[class_index]
-        class_distribution[k]['num'] = class_distribution[k]['num'] + 1
+        class_distribution[k]['num'] += 1
 
     # Need at least 2 members. 1 for training and 1 for test  
     for k in classes:
@@ -230,6 +228,8 @@ def getClassDistribution(data):
     return class_distribution
 
 def getClassDistributionForSplits(data, test_fraction):
+    """ Return class distribution for <data> and <test_fraction> adjusted to
+        make splits valid integer values """
     class_distribution = getClassDistribution(data)
 
     num_instances = sum([v['num'] for v in class_distribution.values()])
@@ -247,21 +247,16 @@ def getClassDistributionForSplits(data, test_fraction):
         if sum([v['num_test'] for v in class_distribution.values()]) >= num_test:
             break
         class_distribution[k]['num_test'] = class_distribution[k]['num_test'] + 1
-
     for k in keys:
         if sum([v['num_test'] for v in class_distribution.values()]) <= num_test:
             break
         class_distribution[k]['num_test'] = class_distribution[k]['num_test'] - 1
-        
+
     for k in sorted(keys):
         print '%28s' % k, class_distribution[k], '%.2f' % (class_distribution[k]['num_test']/class_distribution[k]['num'])
         assert(class_distribution[k]['num_test'] > 0)
 
     return class_distribution
-
-    split_vector = [(x < num_test) for x in range(num_instances)]
-    random.shuffle(split_vector)
-    return split_vector
 
 WEIGHT_RATIO = 0.8
 
@@ -270,10 +265,10 @@ def applyWeights(roulette_in):
         Weights are based on 'score' keys.
         For use in rouletteWheel 
     """
-    # First store the orginal order in 'idx' key
+    # First store the original order in 'idx' key
     for i,x in enumerate(roulette_in):
         x['idx'] = i
-    # Then sort by weight
+    # Then sort by score and set weight based on order
     roulette = sorted(roulette_in, key = lambda x: -x['score'])
     for i,x in enumerate(roulette):
         x['weight'] = WEIGHT_RATIO**(i+1)
@@ -284,7 +279,7 @@ def applyWeights(roulette_in):
 
 def spinRouletteWheel(roulette_in):
     """ Find the roulette wheel winner
-        roulette is a list of dicts with keys 'idx', 'score'
+        roulette is a list of dicts with keys 'idx' and 'weight'
         Returns an index with probability proportional to dict's 'weight'
     """
     roulette = applyWeights(roulette_in)
@@ -298,6 +293,7 @@ def spinRouletteWheel(roulette_in):
     raise ValueException('Cannot be here')
 
 def spinRouletteWheelTwice(roulette):
+    """" Spin the roulette wheel twice and return 2 different values """
     while True:
         i1 = spinRouletteWheel(roulette)
         i2 = spinRouletteWheel(roulette)
@@ -338,11 +334,6 @@ def crossOver_(c1, c2):
     assert(len(c1) > 0)
     assert(len(c2) > 0)
     n = len(c1)
-
-    if False:
-        print crossOver_
-        print c1[:30]
-        print c2[:30]
 
     # Find elements that are not in both lists
     d1 = sorted(c1, key = lambda x: x in c2)
@@ -408,17 +399,7 @@ def crossOver(v1, v2, class_distribution):
     d1,d2 = uniqueCrossOver_(c1,c2, class_distribution)
     assert(len(d1) > 0)
     assert(len(d2) > 0)
-    out = [getVector(d, len(v1)) for d in (d1,d2)]
-    if False:
-        print
-        print 'c1', showSplit(v1)
-        print 'c2', showSplit(v2)
-        print 'd1', showSplit(out[0])
-        print 'd2', showSplit(out[1])
-        print 'd1', d1[:40]
-        print 'd2', d2[:40]
-    
-    return out
+    return [getVector(d, len(v1)) for d in (d1,d2)]
 
 def runGA(base_data, num_instances, test_fraction):
     # Create just enough to seed the set with a good coverage
@@ -457,7 +438,7 @@ def runGA(base_data, num_instances, test_fraction):
     while len(existing_splits) < num_random_samples:
         # split_vector = getRandomSplit(num_instances, test_fraction)
         print len(existing_splits), ': ',
-        split_vector = getRandomSplitDict(class_distribution)
+        split_vector = getRandomSplit(class_distribution)
         accuracy = getAccuracyForSplit(base_data, split_vector)
         addSplit(split_vector)
     print
@@ -537,13 +518,7 @@ def runGA(base_data, num_instances, test_fraction):
         print eval
  
 if __name__ == '__main__':
-    if False:
-        if (not (len(sys.argv) == 2)):
-            print "Usage: split_data.py <arff-file>"
-            sys.exit()
-        accuracy = getAccuracy(sys.argv[1], sys.argv[1])
-        print 'accuracy =', accuracy
-
+  
     global base_attrs 
 
     if (not (len(sys.argv) == 3)):
