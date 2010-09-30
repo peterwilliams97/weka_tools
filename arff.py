@@ -13,7 +13,7 @@ def writeArff(file_name, comments, relation, attrs, data, make_copies = False):
     """ Write a Weka .arff file """
     #print 'writeArff:', file_name, len(data), len(data[0])
     f = file(file_name, 'w')
-    f.write('%\n')
+    f.write('\n')
     f.write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
     f.write('%% %s \n' % os.path.basename(file_name))
     f.write('%\n')
@@ -46,36 +46,33 @@ def quote(s):
 
 def getRe(pattern, text):
     print '  getRe', quote(text)
-    vals = re.findall(pattern, text.upper())
+    vals = re.findall(pattern, text)
     print '  ++', vals
-    if False:
-        m = re.match(pattern, text.upper())
-        if m == None:
-            return None
-        print '**', m.group()
-        return m.group()
     return vals
 
+relation_pattern = re.compile(r'@RELATION\s*(\S+)\s*$', re.IGNORECASE)
+attr_name_pattern = re.compile(r'@ATTRIBUTE\s*(\S+)\s*\{', re.IGNORECASE)
+attr_vals_pattern = re.compile(r'\{\s*(.+)\s*\}', re.IGNORECASE)
+csv_pattern = re.compile(r'(?:^|,)(\"(?:[^\"]+|\"\")*\"|[^,]*)', re.IGNORECASE)
+    
 def readArff(file_name):
     lines = file(file_name).readlines()
-    lines = [l.rstrip('\n').strip().upper() for l in lines]
+    lines = [l.rstrip('\n').strip() for l in lines]
     lines = [l for l in lines if len(l)]
 
     comments = [l for l in lines if l[0] == '%']
+    lines = [l for l in lines if not l[0] == '%']
+    
     relation = [l for l in lines if '@RELATION' in l.upper()]
     attributes = [l for l in lines if '@ATTRIBUTE' in l.upper()]
+    
     data = []
     in_data = False
     for l in lines:
         if in_data:
             data.append(l)
-        elif '@DATA' in l:
+        elif '@DATA' in l.upper():
             in_data = True
-
-    relation_pattern = re.compile(r'@RELATION\s*(\S+)\s*$')
-    attr_name_pattern = re.compile(r'@ATTRIBUTE\s*(\S+)\s*\{')
-    attr_vals_pattern = re.compile(r'\{\s*(.+)\s*\}')
-    csv_pattern = re.compile(r'(?:^|,)(\"(?:[^\"]+|\"\")*\"|[^,]*)')
 
     out_relation = getRe(relation_pattern, relation[0])[0]
 
@@ -89,7 +86,7 @@ def readArff(file_name):
 
     out_data = []
     for l in data:
-        out_data.append(getRe(csv_pattern, l))
+        out_data.append([x.strip() for x in getRe(csv_pattern, l)])
 
     return (out_relation, comments, out_attrs, out_data)
 
