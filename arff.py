@@ -9,25 +9,25 @@ Created on 28/09/2010
 
 import sys, re, os, datetime
 
-def writeArff(file_name, comments, relation, attrs, data, make_copies = False):
+def writeArff(filename, comments, relation, attrs, data, make_copies = False):
     """ Write a Weka .arff file """
-    #print 'writeArff:', file_name, len(data), len(data[0])
-    f = file(file_name, 'w')
+    #print 'writeArff:', filename, len(data), len(data[0])
+    f = file(filename, 'w')
     f.write('\n')
     f.write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
-    f.write('%% %s \n' % os.path.basename(file_name))
+    f.write('%% %s \n' % os.path.basename(filename))
     f.write('%\n')
     f.write('% Created by ' + os.path.basename(sys.argv[0]) + ' on ' + datetime.date.today().strftime("%A, %d %B %Y") + '\n')
-    f.write('% Code at http://bit.ly/b7Kkqt\n')
+    f.write('% Code at http://bit.ly/read_arff\n')
     f.write('%\n')
-    f.write('% Constructed from raw data in http://archive.ics.uci.edu/ml/machine-learning-databases/soybean/\n')
     f.write('%% %d instances\n' % len(data))
     f.write('%% %d attributes + 1 class = %d columns\n' % (len(data[0]) - 1, len(data[0])))
     f.write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
     f.write('\n')
-    f.write('% Original comments\n')
-    for c in comments:
-        f.write(c + '\n')
+    if comments:
+        f.write('% Original comments\n')
+        for c in comments:
+            f.write(c + '\n')
     f.write('@RELATION ' + relation + '\n\n')
     for a in attrs:
         f.write('@ATTRIBUTE %-15s {%s}\n' % (a['name'], ','.join([x for x in a['vals'] if not x == '?'])))
@@ -38,16 +38,16 @@ def writeArff(file_name, comments, relation, attrs, data, make_copies = False):
 
     if make_copies:
         """ Copy .arff files to .arff.txt so they can be viewed from Google docs """
-        print 'writeArff:', file_name + '.txt', '-- duplicate'
-        shutil.copyfile(file_name, file_name + '.txt')
+        print 'writeArff:', filename + '.txt', '-- duplicate'
+        shutil.copyfile(filename, filename + '.txt')
 
 def quote(s):
     return '<<' + s + '>>'
 
 def getRe(pattern, text):
-    print '  getRe', quote(text)
+    #print '  getRe', quote(text)
     vals = re.findall(pattern, text)
-    print '  ++', vals
+    #print '  ++', vals
     return vals
 
 relation_pattern = re.compile(r'@RELATION\s*(\S+)\s*$', re.IGNORECASE)
@@ -55,8 +55,8 @@ attr_name_pattern = re.compile(r'@ATTRIBUTE\s*(\S+)\s*\{', re.IGNORECASE)
 attr_vals_pattern = re.compile(r'\{\s*(.+)\s*\}', re.IGNORECASE)
 csv_pattern = re.compile(r'(?:^|,)(\"(?:[^\"]+|\"\")*\"|[^,]*)', re.IGNORECASE)
     
-def readArff(file_name):
-    lines = file(file_name).readlines()
+def readArff(filename):
+    lines = file(filename).readlines()
     lines = [l.rstrip('\n').strip() for l in lines]
     lines = [l for l in lines if len(l)]
 
@@ -87,6 +87,8 @@ def readArff(file_name):
     out_data = []
     for l in data:
         out_data.append([x.strip() for x in getRe(csv_pattern, l)])
+    for d in out_data:
+        assert(len(out_attrs) == len(d))
 
     return (out_relation, comments, out_attrs, out_data)
 
