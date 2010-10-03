@@ -52,7 +52,7 @@ algo_list = [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48(),'J48'
 algo_dict = dict([(x[1], x[0]) for x in algo_list])
  
 # Algo keys sorted in order of computation time 
-all_algo_keys = ['NaiveBayes', 'J48', 'KStar', 'JRip', 'RandomForest', 'BayesNet', 'SMO', 'MLP', 'MultiBoost']
+all_algo_keys = ['JRip', 'RandomForest', 'SMO', 'MLP', 'MultiBoost', 'NaiveBayes', 'J48', 'KStar', 'BayesNet']
 
 
 
