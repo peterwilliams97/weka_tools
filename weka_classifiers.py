@@ -53,13 +53,17 @@ algo_dict = dict([(x[1], x[0]) for x in algo_list])
 
 
 def runClassifierAlgo(algo, class_index, training_filename, test_filename, do_model, do_eval, do_predict):
-    """ Run classifier algorithm <algo> on training data in <training_filename> to build a model
-        then run in on data in <test_filename> (equivalent of Weka "Supplied test set") 
+    """ If <test_filename>
+            Run classifier algorithm <algo> on training data in <training_filename> to build a model
+            then test on data in <test_filename> (equivalent of Weka "Supplied test set") 
+        else
+            do 10 fold CV lassifier algorithm <algo> on data in <training_filename>
+        
         <class_index> is the column containing the dependent variable 
         
         http://weka.wikispaces.com/Generating+classifier+evaluation+output+manually
         http://weka.sourceforge.net/doc.dev/weka/classifiers/Evaluation.html
-        """
+    """
     training_file = FileReader(training_filename)
     training_data = Instances(training_file)
     if test_filename:
@@ -73,7 +77,8 @@ def runClassifierAlgo(algo, class_index, training_filename, test_filename, do_mo
     test_data.setClassIndex(class_index)
 
     # create the model
-    algo.buildClassifier(training_data)
+    if test_filename:
+        algo.buildClassifier(training_data)
 
     evaluation = None
     # only a trained classifier can be evaluated
@@ -85,8 +90,16 @@ def runClassifierAlgo(algo, class_index, training_filename, test_filename, do_mo
         if test_filename:
             evaluation.evaluateModel(algo, test_data, [buffer, attRange, outputDistribution])
         else:
+           # evaluation.evaluateModel(algo, [String('-t ' + training_filename), String('-c 1')])
+           # print evaluation.toSummaryString()
             rand = Random(1)
             evaluation.crossValidateModel(algo, training_data, 10, rand)
+            if False:
+                print 'percentage correct =', evaluation.pctCorrect()
+                print 'area under ROC =', evaluation.areaUnderROC(class_index)
+                confusion_matrix = evaluation.confusionMatrix()
+                for l in confusion_matrix:
+                    print '** ', ','.join('%2d'%int(x) for x in l)
 
     if verbose:
         if do_model:
@@ -116,7 +129,8 @@ classify_tag = 'Correctly Classified Instances'
 def getAccuracyAlgo(algo, class_index, training_filename, test_filename = None):
     """ Returns accuracy of algorithm <algo> built from training data in <training_filename> 
         and tested on data in <test_filename> """ 
-    lines = getEvalAlgo(algo, class_index, training_filename, test_filename).split('\n')
+    eval = getEvalAlgo(algo, class_index, training_filename, test_filename)
+    lines = eval.split('\n')
     for ln in lines:
         if classify_tag in ln:
             contents = ln[len(classify_tag):]
@@ -124,7 +138,7 @@ def getAccuracyAlgo(algo, class_index, training_filename, test_filename = None):
             assert(len(parts) == 3)
             accuracy = float(parts[1])
             assert(isinstance(accuracy, float))
-            return accuracy
+            return (accuracy, eval)
     raise ValueException('Cannot be here')
 
 def getAccuracyAlgoKey(algo_key, class_index, training_filename):

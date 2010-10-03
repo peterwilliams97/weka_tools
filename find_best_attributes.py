@@ -36,20 +36,25 @@ def getRandomExcluding(num_values, exclusion_set):
             return n
 
 valid_extensions = ['arff', 'csv']
-def makeFileName(base_filename, algo_key, subset_size, ext):
+def makeFileName(base_path, algo_key, subset_size, ext):
     assert(ext in valid_extensions, 'Invalid file type')
-    base = '_%s' % os.path.splitext(base_filename)[0]
+    base_filename = os.path.basename(base_path)
+    name = '_%s' % os.path.splitext(base_filename)[0]
     algo = '_%s' % algo_key if algo_key else ''
     subset = '_%02d' % subset_size if subset_size >= 0 else ''
-    return 'search%s%s%s.%s' % (base, algo, subset, ext)
+    output_name = 'search%s%s%s.%s' % (name, algo, subset, ext)
+    return os.path.join(output_dir, output_name)
 
 def getSubsetResultDict(algo_key, data, attributes, exclusive_subset):
     """ Returns a dict that shows results of running <algo_key> classfier on
         <data> for (complement of <exclusive_subset>) <attributes) """
     inclusive_subset = [i for i in range(len(attributes)) if i not in exclusive_subset]
-    accuracy = getAccuracyForSubset(algo_key, data, attributes, inclusive_subset)
-    result = {'subset':exclusive_subset, 'score':accuracy}
-    print 'getSubsetResultDict =>', result
+    accuracy, eval = getAccuracyForSubset(algo_key, data, attributes, inclusive_subset)
+    result = {'subset':exclusive_subset, 'score':accuracy, 'eval': eval}
+    print 'getSubsetResultDict =>', result['score'], result['subset']
+    if False:
+        for l in result['eval'].split('\n'):
+            print '--     ', l
     return result
 
 def getCsvResultHeader():
@@ -147,18 +152,22 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                 print '2. Converged after', cnt, 'GA rounds'
                 break
 
-    best_filename = makeFileName(base_filename, algo_key, subset_size,'arff')
+    best_arff = makeFileName(base_filename, algo_key, subset_size,'arff')
+    best_results = makeFileName(base_filename, algo_key, subset_size, 'results')
     best_subset = results[0]['subset']
     best_attributes = [attributes[i] for i in best_subset]
     best_data = [[d[i] for i in best_subset] for d in data]
-    arff.writeArff(best_filename, None, 'best_attr_%s_%02d' % (algo_key,subset_size), best_attributes, best_data)
+    
+    arff.writeArff(best_arff, None, 'best_attr_%s_%02d' % (algo_key,subset_size), best_attributes, best_data)
+    
+    file(best_results).write(results[0]['eval'])
     print 'Results -----------------------------------------------------'
     print 'WEIGHT_RATIO', ga.WEIGHT_RATIO, 'candidates_per_round', candidates_per_round
     print 'accuracy =', results[0]['score'] 
     print 'subset =', results[0]['subset']
     if False:
         for name in WC.algo_dict.keys():
-            eval = WC.getEvalAlgoKey(name, class_index, best_filename)
+            
             print name, '---------------------------------'
             print eval
     print '-------------------------------------------------------------'
@@ -188,11 +197,17 @@ def findBestAttributes(base_filename, algo_key, data, attributes):
 
 if __name__ == '__main__':
 
-    if len(sys.argv) < 2:
-        print 'Usage: jython find_best_attributes.py  <arff-file>'
+    if len(sys.argv) < 3:
+        print 'Usage: jython find_best_attributes.py  <arff-file> <output-dir>'
         sys.exit()
 
     filename = sys.argv[1]
+    global output_dir
+    output_dir = sys.argv[2]
+    try:
+        os.mkdir(output_dir)
+    except:
+        pass
     algo_key = 'BayesNet' 
     relation, comments, attributes, data = arff.readArff(filename)
 
