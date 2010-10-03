@@ -169,7 +169,7 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
         print ['%.1f%%' % x['score'] for x in results[:10]]
 
         history_of_best.append(best_score)
-        history_of_best.sort()
+        history_of_best.sort(key = lambda x: -x)
         if len(history_of_best) >= convergence_number:
             print 'history_of_best =', history_of_best[:10]
             converged = True
