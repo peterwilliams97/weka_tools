@@ -16,25 +16,6 @@ random.seed(555)
 # The column containing the class
 class_index = 0
 
-def getAccuracyForSubset(algo_key, data, attributes, subset):
-    num_attrs = len(attributes)
-    assert(len(subset) <= num_attrs)
-    for d in data:
-        assert(len(d) == num_attrs)
-    attrs_subset = [attributes[i] for i in range(num_attrs) if i in subset]
-    data_subset = [[d[i] for i in range(num_attrs) if i in subset] for d in data]
-
-    training_filename = 'find_best_attr.arff'
-    arff.writeArff(training_filename, None, 'find_best_attr', attrs_subset, data_subset)
-    return WC.getAccuracyAlgoKey(algo_key, class_index, training_filename)
-
-def getRandomExcluding(num_values, exclusion_set):
-    """ Return a random integer from 0 to <num_values>-1 excluding numbers in <exclusion_set> """
-    while True:
-        n = random.randint(0, num_values -1)
-        if n not in exclusion_set:
-            return n
-
 valid_extensions = ['arff', 'csv']
 def makeFileName(base_path, algo_key, subset_size, ext):
     assert(ext in valid_extensions, 'Invalid file type')
@@ -45,11 +26,58 @@ def makeFileName(base_path, algo_key, subset_size, ext):
     output_name = 'search%s%s%s.%s' % (name, algo, subset, ext)
     return os.path.join(output_dir, output_name)
 
+def writeArffForInclusiveSubset(filename, data, attributes, subset):
+    num_attrs = len(attributes)
+    assert(len(subset) <= num_attrs)
+    for d in data:
+        assert(len(d) == num_attrs)
+    attrs_subset = [attributes[i] for i in range(num_attrs) if i in subset]
+    data_subset = [[d[i] for i in range(num_attrs) if i in subset] for d in data]
+    arff.writeArff(filename, None, 'find_best_attr', attrs_subset, data_subset)
+
+def getAccuracyForInclusiveSubset(algo_key, data, attributes, subset):
+    training_filename =  makeFileName('find-best-attr', algo_key, None, 'arff')
+    writeArffForInclusiveSubset(training_filename, data, attributes, subset)
+    result = WC.getAccuracyAlgoKey(algo_key, class_index, training_filename)
+    # print 'result',result
+    for i in range(1000):
+        try:
+            os.remove(training_filename)
+            break
+        except:
+            pass
+        
+    
+    return result
+
+def getAccuracyForSubset0(algo_key, data, attributes, subset):
+    num_attrs = len(attributes)
+    assert(len(subset) <= num_attrs)
+    for d in data:
+        assert(len(d) == num_attrs)
+    attrs_subset = [attributes[i] for i in range(num_attrs) if i in subset]
+    data_subset = [[d[i] for i in range(num_attrs) if i in subset] for d in data]
+
+    # training_filename = 'find_best_attr.arff'
+    training_filename =  makeFileName('find-best-attr', None, None, 'arff')
+    arff.writeArff(training_filename, None, 'find_best_attr', attrs_subset, data_subset)
+    return WC.getAccuracyAlgoKey(algo_key, class_index, training_filename)
+
+def getRandomExcluding(num_values, exclusion_set):
+    """ Return a random integer from 0 to <num_values>-1 excluding numbers in <exclusion_set> """
+    while True:
+        n = random.randint(0, num_values -1)
+        if n not in exclusion_set:
+            return n
+
+def getInclusiveSubset(attributes, exclusive_subset):
+    return [i for i in range(len(attributes)) if i not in exclusive_subset]
+
 def getSubsetResultDict(algo_key, data, attributes, exclusive_subset):
     """ Returns a dict that shows results of running <algo_key> classfier on
         <data> for (complement of <exclusive_subset>) <attributes) """
-    inclusive_subset = [i for i in range(len(attributes)) if i not in exclusive_subset]
-    accuracy, eval = getAccuracyForSubset(algo_key, data, attributes, inclusive_subset)
+    inclusive_subset = getInclusiveSubset(attributes, exclusive_subset)
+    accuracy, eval = getAccuracyForInclusiveSubset(algo_key, data, attributes, inclusive_subset)
     result = {'subset':exclusive_subset, 'score':accuracy, 'eval': eval}
     print 'getSubsetResultDict =>', result['score'], result['subset']
     if False:
@@ -67,7 +95,8 @@ def getCsvResultRow(result, attributes):
         print type(result['subset']), result['subset']
         print type(attributes), attributes
     assert(isinstance(result['score'], float))
-    num_attrs = str(len(attributes) - len(result['subset']))
+    #-1 is for the class attribute
+    num_attrs = str(len(attributes) -1 - len(result['subset']))
     included_attributes = ';'.join([attributes[i]['name'] for i in result['subset']])
     accuracy = '%.03f' % (result['score']/100.0)
     return [num_attrs, accuracy, included_attributes]
@@ -152,15 +181,15 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                 print '2. Converged after', cnt, 'GA rounds'
                 break
 
-    best_arff = makeFileName(base_filename, algo_key, subset_size,'arff')
+    best_arff = makeFileName(base_filename, algo_key, subset_size, 'arff')
     best_results = makeFileName(base_filename, algo_key, subset_size, 'results')
     best_subset = results[0]['subset']
-    best_attributes = [attributes[i] for i in best_subset]
-    best_data = [[d[i] for i in best_subset] for d in data]
     
-    arff.writeArff(best_arff, None, 'best_attr_%s_%02d' % (algo_key,subset_size), best_attributes, best_data)
+    best_inclusive_subset = getInclusiveSubset(attributes, best_subset)
+    writeArffForInclusiveSubset(best_arff, data, attributes, best_inclusive_subset)
+    #arff.writeArff(best_arff, None, 'best_attr_%s_%02d' % (algo_key,subset_size), best_attributes, best_data)
     
-    file(best_results).write(results[0]['eval'])
+    file(best_results, 'w').write(results[0]['eval'])
     print 'Results -----------------------------------------------------'
     print 'WEIGHT_RATIO', ga.WEIGHT_RATIO, 'candidates_per_round', candidates_per_round
     print 'accuracy =', results[0]['score'] 
@@ -208,9 +237,16 @@ if __name__ == '__main__':
         os.mkdir(output_dir)
     except:
         pass
-    algo_key = 'BayesNet' 
+
     relation, comments, attributes, data = arff.readArff(filename)
 
-
-    findBestAttributes(filename, algo_key, data, attributes)
+    print 'Algos to test 0:', WC.algo_dict.keys()
+    print 'Algos to test 2:', WC.all_algo_keys
+    for k in WC.all_algo_keys:
+        assert(k in WC.algo_dict.keys())
+    assert('does not exist' not in WC.algo_dict.keys())
+  
+   # algo_key = 'BayesNet' 
+    for algo_key in WC.all_algo_keys:
+        findBestAttributes(filename, algo_key, data, attributes)
 
