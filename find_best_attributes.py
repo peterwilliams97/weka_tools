@@ -19,9 +19,9 @@ show_results = False
 # The column containing the class
 class_index = 0
 
-valid_extensions = ['arff', 'csv']
+valid_extensions = ['arff', 'csv', 'results']
 def makeFileName(base_path, algo_key, subset_size, ext):
-    assert(ext in valid_extensions, 'Invalid file type')
+    assert(ext in valid_extensions)
     base_filename = os.path.basename(base_path)
     name = '_%s' % os.path.splitext(base_filename)[0]
     algo = '_%s' % algo_key if algo_key else ''
@@ -97,6 +97,7 @@ def getRandomExcluding(num_values, exclusion_set):
             return n
 
 def getInclusiveSubset(attributes, exclusive_subset):
+    assert(class_index not in exclusive_subset)
     return [i for i in range(len(attributes)) if i not in exclusive_subset]
 
 def getSubsetResultDict(algo_key, data, attributes, exclusive_subset):
@@ -161,7 +162,7 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
     done = False
     for r in previous_best:
         for i in range(len(attributes)):
-            if not i in r['subset'] and 1 != class_index:
+            if not i in r['subset'] and i != class_index:
                 s = sorted(set(r['subset'][:] + [i]))
             #s = sorted(set(r['subset'][:] + [getRandomExcluding(num_attrs, r['subset'] + [class_index])]))
                 assert(len(s) == subset_size)
@@ -179,7 +180,7 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
         addSubset(subset)
         superset = list(set(superset + subset))
     # print 'superset', len(superset), sorted(superset)
-    assert(len(superset) == len(attributes))
+    assert(len(superset) == len(attributes)-1)
     
     if verbose:
         print 'subsets', subsets
@@ -267,9 +268,10 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
     
     file(best_results, 'w').write(results[0]['eval'])
     print 'Results: WEIGHT_RATIO', ga.WEIGHT_RATIO, 'candidates_per_round', candidates_per_round
-    print 'accuracy =', '%.1f%%' % results[0]['score'] 
+    print 'accuracy =', '%.1f%%' % results[0]['score']
+    print 'best 10  =', ['%.1f%%' % x['score'] for x in results[:10]]
     print 'subset =', results[0]['subset']
-    print 'best 10 = ', ['%.1f%%' % x['score'] for x in results[:10]]
+    print '       =', [attributes[i]['name'] for i in results[0]['subset']]
     if False:
         for name in WC.algo_dict.keys():
             
@@ -329,7 +331,8 @@ if __name__ == '__main__':
     time.sleep(1)
    
     for algo_key in WC.all_algo_keys:
-       findBestAttributes(filename, algo_key, data, attributes)
+        print '======================= findBestAttributes:', filename, algo_key 
+        findBestAttributes(filename, algo_key, data, attributes)
        
     if False:
         for algo_key in WC.all_algo_keys:
