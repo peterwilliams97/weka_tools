@@ -1,4 +1,4 @@
-Set of [Jython][http://www.jython.org/] tools to perform data mining tasks using [Weka][http://www.cs.waikato.ac.nz/ml/weka/]
+Set of [Jython](http://www.jython.org/) tools to perform data mining tasks using [Weka](http://www.cs.waikato.ac.nz/ml/weka/)
 [http://bit.ly/weka_tools]
 
 Needs Jython and Weka.
