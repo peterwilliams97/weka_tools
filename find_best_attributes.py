@@ -13,6 +13,9 @@ import sys, os, random, math, time, csv, preprocess_soybeans, weka_classifiers a
 # Set random seed so that each run gives same results
 random.seed(555)
 
+verbose = False
+show_results = False
+
 # The column containing the class
 class_index = 0
 
@@ -102,10 +105,11 @@ def getSubsetResultDict(algo_key, data, attributes, exclusive_subset):
     inclusive_subset = getInclusiveSubset(attributes, exclusive_subset)
     accuracy, eval = getAccuracyForInclusiveSubset(algo_key, data, attributes, inclusive_subset)
     result = {'subset':exclusive_subset, 'score':accuracy, 'eval': eval}
-    print 'getSubsetResultDict =>', result['score'], result['subset']
-    if False:
-        for l in result['eval'].split('\n'):
-            print '--     ', l
+    if verbose:
+        print 'getSubsetResultDict =>', result['score'], result['subset']
+        if False:
+            for l in result['eval'].split('\n'):
+                print '--     ', l
     return result
 
 def getCsvResultHeader():
@@ -174,10 +178,11 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
     for subset in subsets:
         addSubset(subset)
         superset = list(set(superset + subset))
-    print 'superset', len(superset), sorted(superset)
+    # print 'superset', len(superset), sorted(superset)
     assert(len(superset) == len(attributes))
     
-    print 'subsets', subsets
+    if verbose:
+        print 'subsets', subsets
 
     if subset_size > 1:
         
@@ -214,15 +219,17 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                     c1 = sorted(c1[:subset_size])
                     if not c1 in existing_subsets:
                         found = True
-                        print '***', c1
+                        if verbose:
+                            print '***', c1
                         break
                     
             if not found:
                 print '1. Converged after', cnt, 'GA rounds'
-                print existing_subsets
-                print 'counters', counters
-                for i,n in enumerate(counters):
-                    print '%2d: %4d' % (i,n), results[i]['subset'], results[i]['score']
+                if verbose:
+                    print existing_subsets
+                    print 'counters', counters
+                    for i,n in enumerate(counters):
+                        print '%2d: %4d' % (i,n), results[i]['subset'], results[i]['score']
                 #exit()
                 break
             
@@ -231,13 +238,16 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
     
             # Test for convergence. Top <convergence_number> scores are the sme
             convergence_number = 10
-            print ['%.1f%%' % x['score'] for x in results[:10]]
+            if verbose or show_results:
+                print ['%.1f%%' % x['score'] for x in results[:10]]
     
             history_of_best.append(results[0]['score'])
-            print 'history_of_best:', results[0]['score'], '=>', history_of_best[:10]
+            if verbose:
+                print 'history_of_best:', results[0]['score'], '=>', history_of_best[:10]
             history_of_best.sort(key = lambda x: -x)
             if len(history_of_best) >= convergence_number:
-                print 'history_of_best =', history_of_best[:10]
+                if verbose:
+                    print 'history_of_best =', history_of_best[:10]
                 converged = True
                 for i in range(1, convergence_number):
                     if history_of_best[i] != history_of_best[0]:
@@ -256,10 +266,10 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
     #arff.writeArff(best_arff, None, 'best_attr_%s_%02d' % (algo_key,subset_size), best_attributes, best_data)
     
     file(best_results, 'w').write(results[0]['eval'])
-    print 'Results -----------------------------------------------------'
-    print 'WEIGHT_RATIO', ga.WEIGHT_RATIO, 'candidates_per_round', candidates_per_round
-    print 'accuracy =', results[0]['score'] 
+    print 'Results: WEIGHT_RATIO', ga.WEIGHT_RATIO, 'candidates_per_round', candidates_per_round
+    print 'accuracy =', '%.1f%%' % results[0]['score'] 
     print 'subset =', results[0]['subset']
+    print 'best 10 = ', ['%.1f%%' % x['score'] for x in results[:10]]
     if False:
         for name in WC.algo_dict.keys():
             
