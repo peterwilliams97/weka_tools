@@ -1,6 +1,5 @@
 Set of [Jython](http://www.jython.org/) tools to perform data mining tasks using [Weka](http://www.cs.waikato.ac.nz/ml/weka/)
-
-[bit.ly/weka_tools](http://bit.ly/weka_tools)
+[http://bit.ly/weka_tools](http://bit.ly/weka_tools)
 
 Needs Jython and Weka.
 
