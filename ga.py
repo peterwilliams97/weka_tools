@@ -130,10 +130,13 @@ def crossOverDist(c1, c2, class_distribution):
     return (sorted(d1), sorted(d2))
 
 def crossOver(c1, c2, class_distribution = None):
-    assert(c1 != c2)
+    if sorted(c1) == sorted(c2):
+        print 'crossOver(): c1,c2 =', sorted(c1), sorted(c2)
+        assert(sorted(c1) != sorted(c2), 'CrossOver: %s, %s' % (str(sorted(c1)), str(sorted(c2))) )
     for i in range(1000):
         d1,d2 = crossOverDist(c1, c2, class_distribution)
         if d1 != d2:
             return d1,d2
+    print 'crossOver() failed: c1,c2 = ', sorted(c1), sorted(c2)
     raise RuntimeError('Cannot be here')
 
