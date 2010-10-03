@@ -188,7 +188,7 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                 #print 'len(results)', len(results)
                 i1,i2 = ga.spinRouletteWheelTwice(results)
                 c1,c2 = ga.crossOver(results[i1]['subset'], results[i2]['subset'])
-                print '*', i1,i2, results[i1]['subset'], results[i2]['subset'], '=>', c1, c2
+                #print '*', i1,i2, results[i1]['subset'], results[i2]['subset'], '=>', c1, c2
                 if i1 < len(counters):
                     counters[i1] += 1
                 if i2 < len(counters):
@@ -200,8 +200,8 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                     c2 = None
                 if c1 or c2:
                     found = True
-                    print '***', c1
-                    print '+++', c2
+                    #print '***', c1
+                    #print '+++', c2
                     break
                 
             if not found:
@@ -223,7 +223,7 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                 print 'counters', counters
                 for i,n in enumerate(counters):
                     print '%2d: %4d' % (i,n), results[i]['subset'], results[i]['score']
-                exit()
+                #exit()
                 break
             
             addSubset(c1)
