@@ -15,6 +15,7 @@ random.seed(555)
 
 verbose = False
 show_results = False
+show_scores = True
 
 # The column containing the class
 class_index = 0
@@ -106,7 +107,7 @@ def getSubsetResultDict(algo_key, data, attributes, exclusive_subset):
     inclusive_subset = getInclusiveSubset(attributes, exclusive_subset)
     accuracy, eval = getAccuracyForInclusiveSubset(algo_key, data, attributes, inclusive_subset)
     result = {'subset':exclusive_subset, 'score':accuracy, 'eval': eval}
-    if verbose:
+    if verbose or show_scores:
         print 'getSubsetResultDict =>', result['score'], result['subset']
         if False:
             for l in result['eval'].split('\n'):
