@@ -39,42 +39,17 @@ def writeArffForInclusiveSubset(filename, data, attributes, subset):
     data_subset = [[d[i] for i in range(num_attrs) if i in subset] for d in data]
     arff.writeArff(filename, None, 'find_best_attr', attrs_subset, data_subset)
 
-def getAccuracyForInclusiveSubset(algo_key, data, attributes, subset):
-    training_filename = makeFileName('find-best-attr', algo_key, None, 'arff')
-    training_filename = 'find-best-attr.arff'
-
+def rm(filename):
     try:
         os.remove(training_filename)
     except:
         pass
 
+def getAccuracyForInclusiveSubset(algo_key, data, attributes, subset):
+    training_filename = makeFileName('find-best-attr', algo_key, None, 'arff')
     writeArffForInclusiveSubset(training_filename, data, attributes, subset)
     result = WC.getAccuracyAlgoKey(algo_key, class_index, training_filename)
-    # print 'result',result
-    if False:
-        deleted = False
-        for tries in range(10):
-            for i in range(1000):
-                exist = os.path.exists(training_filename)
-                if exist:
-                    print training_filename, 'exists !!!!'
-                    os.remove(training_filename)
-                try:
-                    print '+++', training_filename
-                    if exist:
-                        print training_filename, 'exists'
-                        os.remove(training_filename)
-                    deleted = True
-                    break
-                except:
-                    print '***'
-                    pass
-            if not deleted:
-                print 'cannot delete', training_filename
-                time.sleep(1)
-            else:
-                break
-
+    rm(training_filename)
     return result
 
 def getAccuracyForSubset0(algo_key, data, attributes, subset):
