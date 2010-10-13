@@ -473,7 +473,7 @@ if __name__ == '__main__':
     # Set random seed so that each run gives same results
     random.seed(555)
 
-    if not len(sys.argv) < 3:
+    if len(sys.argv) < 3:
         print 'usage: split_data.py <base-file> <test-fraction>'
         sys.exit()
 
