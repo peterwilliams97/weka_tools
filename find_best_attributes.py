@@ -10,12 +10,9 @@ Created on 27/09/2010
 
 import sys, os, random, math, time, csv, preprocess_soybeans, weka_classifiers as WC, arff, ga
 
-# Set random seed so that each run gives same results
-random.seed(555)
-
 verbose = False
 show_results = False
-show_scores = True
+show_scores = False
 
 # The column containing the class
 class_index = 0
@@ -51,19 +48,6 @@ def getAccuracyForInclusiveSubset(algo_key, data, attributes, subset):
     result = WC.getAccuracyAlgoKey(algo_key, class_index, training_filename)
     rm(training_filename)
     return result
-
-def getAccuracyForSubset0(algo_key, data, attributes, subset):
-    num_attrs = len(attributes)
-    assert(len(subset) <= num_attrs)
-    for d in data:
-        assert(len(d) == num_attrs)
-    attrs_subset = [attributes[i] for i in range(num_attrs) if i in subset]
-    data_subset = [[d[i] for i in range(num_attrs) if i in subset] for d in data]
-
-    # training_filename = 'find_best_attr.arff'
-    training_filename =  makeFileName('find-best-attr', None, None, 'arff')
-    arff.writeArff(training_filename, None, 'find_best_attr', attrs_subset, data_subset)
-    return WC.getAccuracyAlgoKey(algo_key, class_index, training_filename)
 
 def getRandomExcluding(num_values, exclusion_set):
     """ Return a random integer from 0 to <num_values>-1 excluding numbers in <exclusion_set> """
@@ -209,15 +193,15 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                         print '%2d: %4d' % (i,n), results[i]['subset'], results[i]['score']
                 #exit()
                 break
-            
+
             addSubset(c1)
             addSubset(c2)
-    
+
             # Test for convergence. Top <convergence_number> scores are the sme
             convergence_number = 10
             if verbose or show_results:
                 print ['%.1f%%' % x['score'] for x in results[:10]]
-    
+
             history_of_best.append(results[0]['score'])
             if verbose:
                 print 'history_of_best:', results[0]['score'], '=>', history_of_best[:10]
@@ -237,22 +221,18 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
     best_arff = makeFileName(base_filename, algo_key, subset_size, 'arff')
     best_results = makeFileName(base_filename, algo_key, subset_size, 'results')
     best_subset = results[0]['subset']
-    
+
     best_inclusive_subset = getInclusiveSubset(attributes, best_subset)
     writeArffForInclusiveSubset(best_arff, data, attributes, best_inclusive_subset)
-    #arff.writeArff(best_arff, None, 'best_attr_%s_%02d' % (algo_key,subset_size), best_attributes, best_data)
-    
+
     file(best_results, 'w').write(results[0]['eval'])
     print 'Results: WEIGHT_RATIO', ga.WEIGHT_RATIO, 'candidates_per_round', candidates_per_round
     print 'accuracy =', '%.1f%%' % results[0]['score']
     print 'best 10  =', ['%.1f%%' % x['score'] for x in results[:10]]
-    print 'subset =', results[0]['subset']
-    print '       =', [attributes[i]['name'] for i in results[0]['subset']]
-    if False:
-        for name in WC.algo_dict.keys():
-            
-            print name, '---------------------------------'
-            print eval
+    print 'exclusive subset =', best_subset
+    print '       =', [attributes[i]['name'] for i in best_subset]
+    print 'inclusive subset =', best_inclusive_subset
+    print '       =', [attributes[i]['name'] for i in best_inclusive_subset]
     print '-------------------------------------------------------------'
     return results[:candidates_per_round]
  
@@ -280,6 +260,9 @@ def findBestAttributes(base_filename, algo_key, data, attributes):
 
 if __name__ == '__main__':
 
+    # Set random seed so that each run gives same results
+    random.seed(555)
+    
     if len(sys.argv) < 3:
         print 'Usage: jython find_best_attributes.py  <arff-file> <output-dir>'
         sys.exit()
@@ -299,27 +282,12 @@ if __name__ == '__main__':
     for k in WC.all_algo_keys:
         assert(k in WC.algo_dict.keys())
     assert('does not exist' not in WC.algo_dict.keys()) 
-    
+
     log_file = file('log.txt', 'w+')
     log_file.write('Opening ----------------\n')
     log_file.flush()
-    
-    time.sleep(1)
-   
+
     for algo_key in WC.all_algo_keys:
         print '======================= findBestAttributes:', filename, algo_key 
         findBestAttributes(filename, algo_key, data, attributes)
-       
-    if False:
-        for algo_key in WC.all_algo_keys:
-            try:
-                findBestAttributes(filename, algo_key, data, attributes)
-            except:
-                try:
-                    print 'findBestAttributes(%s, %s) failed' % (filename, algo_key)
-                    log_file.write('findBestAttributes(%s, %s) failed\n' % (filename, algo_key))
-                    log_file.flush()
-                except:
-                    pass
-                
-    
+ 

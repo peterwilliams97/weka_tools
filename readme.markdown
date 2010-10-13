@@ -6,6 +6,8 @@ Needs Jython and Weka.
 
 Uses UCI Michalski and Chilausky [soybean data set](http://archive.ics.uci.edu/ml/machine-learning-databases/soybean/ "soybean data")
 
+Originally developed for a [class assignment](http://bit.ly/weka_data_mining).
+
 1. ** setup.bat** Shows how to set up classpath to use Weka
 2. **run-ga.bat** Shows how to run split_data.py
 3. **split_data.py**  Finds split of data file into training and test sets that give best results. Output is 2 Weka files

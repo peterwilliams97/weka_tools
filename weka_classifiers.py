@@ -52,8 +52,7 @@ algo_list = [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48(),'J48'
 algo_dict = dict([(x[1], x[0]) for x in algo_list])
  
 # Algo keys sorted in order of computation time 
-all_algo_keys = ['MLP','SMO', 'MultiBoost', 'NaiveBayes', 'J48', 'BayesNet', 'JRip', 'RandomForest', 'KStar']
-
+all_algo_keys = ['MLP','NaiveBayes', 'J48', 'BayesNet', 'JRip', 'RandomForest', 'KStar', 'SMO', 'MultiBoost']
 
 
 def runClassifierAlgo(algo, class_index, training_filename, test_filename, do_model, do_eval, do_predict):
@@ -154,15 +153,6 @@ def getAccuracyAlgoKey(algo_key, class_index, training_filename):
 def getAccuracy(training_filename, test_filename):
     algo_list = [NaiveBayes(), BayesNet(), J48(), RandomForest(), JRip(), KStar(), SMO(), MLP(), MultiBoost()]
 
-    #algo_list = [JRip(), KStar()]# , RandomForest(), getMultiBoost()]
-    #algo_list = [J48()]
-    #algo_list = [NaiveBayes()]
-    if False:
-        good_list = [MLP()]
-        bad_list = [SMO()]
-        return len(bad_list)*100.0 \
-                + sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in good_list]) \
-                - sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in bad_list])
     if do_worst:
         return len(algo_list)*100.0 - sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
     else:

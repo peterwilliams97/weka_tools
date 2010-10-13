@@ -78,7 +78,9 @@ def readCsvFloat(filename):
     return matrix
 
 def writeCsv(filename, in_matrix, header = None):
-    "Writes a 2d array to a CSV file"
+    """ Writes a 2d array to a CSV file
+    	filename, matrix, header
+    """
     matrix = [header] + in_matrix if header else in_matrix
     print 'writeCsv:', filename, len(matrix), len(matrix[0])
     file(filename, 'w').write('\n'.join(map(lambda row: ','.join(map(str,row)), matrix)) + '\n')

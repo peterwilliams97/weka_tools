@@ -10,8 +10,14 @@ Created on 28/09/2010
 import sys, re, os, datetime
 
 def writeArff(filename, comments, relation, attrs, data, make_copies = False):
-    """ Write a Weka .arff file """
-    #print 'writeArff:', filename, len(data), len(data[0])
+    """ Write a WEKA .arff file 
+    Params:
+        filename: name of .arff file
+        comments: free text comments 
+        relation: name of data set
+        attrs: list of attributes
+        data: the actual data
+    """
     f = file(filename, 'w')
     f.write('\n')
     f.write('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
@@ -56,6 +62,15 @@ attr_vals_pattern = re.compile(r'\{\s*(.+)\s*\}', re.IGNORECASE)
 csv_pattern = re.compile(r'(?:^|,)(\"(?:[^\"]+|\"\")*\"|[^,]*)', re.IGNORECASE)
     
 def readArff(filename):
+    """ Read a WEKA .arff file
+    Params: 
+        filename: name of .arff file
+    Returns:
+        comments: free text comments 
+        relation: name of data set
+        attrs: list of attributes
+        data: the actual data
+    """
     lines = file(filename).readlines()
     lines = [l.rstrip('\n').strip() for l in lines]
     lines = [l for l in lines if len(l)]

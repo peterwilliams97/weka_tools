@@ -1,0 +1,1 @@
+jython split_data.py soybean-large.data.arff .2
