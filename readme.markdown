@@ -14,3 +14,5 @@ Originally developed for a [class assignment](http://bit.ly/weka_data_mining).
 4. **preprocess_soybeans.py** Pre-processes the soybean data set
 5. **find_best_attributes.py** Finds subset of attributes that give best classification accuracy for a given algorithm and data set
 6. **arff.py** Weka .arff file reader and writer
+7. **[split_data.py](http://bit.ly/split_data)** Splits a WEKA .arff file to preserve class distribution and maximize or minimize aggregate accuracy of a set of classifiers
+7. **find_soybean_split.bat** Shows how to run 
