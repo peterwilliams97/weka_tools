@@ -473,7 +473,7 @@ if __name__ == '__main__':
     # Set random seed so that each run gives same results
     random.seed(555)
 
-    if (not (len(sys.argv) == 3)):
+    if not len(sys.argv) < 3:
         print 'usage: split_data.py <base-file> <test-fraction>'
         sys.exit()
 
@@ -483,6 +483,8 @@ if __name__ == '__main__':
     print 'input file:', base_file
     print 'test fraction:', test_fraction
     print 'algorithms:', [name for (_,name) in algo_val_name]
+    print 'class index:', class_index
+    print 'do_worst:', do_worst
 
     global base_relation
     global base_comments
