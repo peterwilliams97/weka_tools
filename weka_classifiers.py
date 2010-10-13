@@ -1,23 +1,19 @@
 from __future__ import division
 """
-A wrapper for some Weka classifiers.
+A wrapper for some WEKA classifiers.
 
-Requires Jython and the Weka java library weka.jar (see 
-http://github.com/peterwilliams97/weka_tools/blob/master/readme.markdown)
+Requires Jython and the WEKA java library weka.jar (see http://bit.ly/weka_tools)
 
 Based on this code example:
 
     http://www.btbytes.com/2005/11/30/weka-j48-classifier-example-using-jython/
 
-Note: needs Weka 3.6.x to run (due to changes in the weka.classifiers.Evaluation class)
+Note: needs WEKA 3.6.x to run (due to changes in the weka.classifiers.Evaluation class)
 
 Created on 27/09/2010
 
 @author: peter
 """
-
-#import sys, os, random
-#from math import *
 
 import java.io.FileReader as FileReader
 import java.lang.String as String
@@ -46,14 +42,14 @@ def getMultiBoost():
     multi_boost.setOptions(['-W weka.classifiers.functions.SMO'])
     return multi_boost
 
+# The classifiers in this module
 algo_list = [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48(),'J48'), (JRip(), 'JRip'),
                  (KStar(), 'KStar'), (RandomForest(), 'RandomForest'), (SMO(),'SMO'), (MLP(),'MLP'), 
                  (getMultiBoost(), 'MultiBoost')]
 algo_dict = dict([(x[1], x[0]) for x in algo_list])
  
 # Algo keys sorted in order of computation time 
-all_algo_keys = ['MLP','NaiveBayes', 'J48', 'BayesNet', 'JRip', 'RandomForest', 'KStar', 'SMO', 'MultiBoost']
-
+all_algo_keys = ['NaiveBayes', 'J48', 'BayesNet', 'JRip', 'RandomForest', 'KStar', 'SMO', 'MLP', 'MultiBoost']
 
 def runClassifierAlgo(algo, class_index, training_filename, test_filename, do_model, do_eval, do_predict):
     """ If <test_filename>
@@ -150,14 +146,6 @@ def getAccuracyAlgoKey(algo_key, class_index, training_filename):
     algo = algo_dict[algo_key]
     return getAccuracyAlgo(algo, class_index, training_filename)
 
-def getAccuracy(training_filename, test_filename):
-    algo_list = [NaiveBayes(), BayesNet(), J48(), RandomForest(), JRip(), KStar(), SMO(), MLP(), MultiBoost()]
-
-    if do_worst:
-        return len(algo_list)*100.0 - sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
-    else:
-        return  sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
-
 training_file_base = '.train.arff'
 test_file_base = '.test.arff'
 
@@ -179,11 +167,6 @@ def makeTrainingTestSplit(base_data, split_vector, prefix):
             test_data.append(x)
         else:
             training_data.append(x)
-
-    if False:
-        print 'base_data', len(base_data), len(base_data[0])
-        print 'training_data', len(training_data), len(training_data[0])
-        print 'test_data', len(test_data), len(test_data[0])
 
     preprocess_soybeans.writeArff(training_file_name, 'soybean', base_classes, base_attrs, training_data)
     preprocess_soybeans.writeArff(test_file_name, 'soybean', base_classes, base_attrs, test_data)

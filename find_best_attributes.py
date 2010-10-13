@@ -57,6 +57,7 @@ def getRandomExcluding(num_values, exclusion_set):
             return n
 
 def getInclusiveSubset(attributes, exclusive_subset):
+    """ Return inclusive subset corresponding to <exlcusive_subset> """
     assert(class_index not in exclusive_subset)
     return [i for i in range(len(attributes)) if i not in exclusive_subset]
 
@@ -68,20 +69,14 @@ def getSubsetResultDict(algo_key, data, attributes, exclusive_subset):
     result = {'subset':exclusive_subset, 'score':accuracy, 'eval': eval}
     if verbose or show_scores:
         print 'getSubsetResultDict =>', result['score'], result['subset']
-        if False:
-            for l in result['eval'].split('\n'):
-                print '--     ', l
     return result
 
 def getCsvResultHeader():
+    """ Return header for results file """
     return ['num_attrs', 'accuracy', 'excluded_attributes']
 
 def getCsvResultRow(result, attributes):
-    if False:
-        print 'getCsvResultRow', result
-        print type(result['score']), result['score']
-        print type(result['subset']), result['subset']
-        print type(attributes), attributes
+    """ Return a row of the results file """
     assert(isinstance(result['score'], float))
     #-1 is for the class attribute
     num_attrs = str(len(attributes) -1 - len(result['subset']))
@@ -95,13 +90,12 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
     """ One round. Start with best <n-1> results and use these to seed the <n> round 
         <previous_results> are <n-1> results
     """
-
     num_attrs = len(attributes)
     #num_random_samples = 20
     results = []
     existing_subsets = []
     history_of_best = []
-   
+
     print base_filename, algo_key, len(attributes), len(previous_results), subset_size
 
     def addSubset(subset):
@@ -146,15 +140,12 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
         print 'subsets', subsets
 
     if subset_size > 1:
-        
         counters = [0]*20
         for cnt in range(1000):
             found = False
             for j in range(1000):
-                #print 'len(results)', len(results)
                 i1,i2 = ga.spinRouletteWheelTwice(results)
                 c1,c2 = ga.crossOver(results[i1]['subset'], results[i2]['subset'])
-                #print '*', i1,i2, results[i1]['subset'], results[i2]['subset'], '=>', c1, c2
                 if i1 < len(counters):
                     counters[i1] += 1
                 if i2 < len(counters):
@@ -166,8 +157,6 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                     c2 = None
                 if c1 or c2:
                     found = True
-                    #print '***', c1
-                    #print '+++', c2
                     break
                 
             if not found:
@@ -258,35 +247,32 @@ def findBestAttributes(base_filename, algo_key, data, attributes):
         csv.writeCsv(out_filename, results_matrix, header)
     return series_results
 
+def mkDir(dir):
+    try:
+        os.mkdir(dir)
+    except:
+        pass
+    
 if __name__ == '__main__':
-
     # Set random seed so that each run gives same results
     random.seed(555)
+    
+    global output_dir
     
     if len(sys.argv) < 3:
         print 'Usage: jython find_best_attributes.py  <arff-file> <output-dir>'
         sys.exit()
 
     filename = sys.argv[1]
-    global output_dir
     output_dir = sys.argv[2]
-    try:
-        os.mkdir(output_dir)
-    except:
-        pass
+    
+    mkDir(output_dir)
+   
 
     relation, comments, attributes, data = arff.readArff(filename)
 
-    print 'Algos to test 0:', WC.algo_dict.keys()
-    print 'Algos to test 2:', WC.all_algo_keys
-    for k in WC.all_algo_keys:
-        assert(k in WC.algo_dict.keys())
-    assert('does not exist' not in WC.algo_dict.keys()) 
-
-    log_file = file('log.txt', 'w+')
-    log_file.write('Opening ----------------\n')
-    log_file.flush()
-
+    print 'Algorithms to test:', WC.all_algo_keys
+ 
     for algo_key in WC.all_algo_keys:
         print '======================= findBestAttributes:', filename, algo_key 
         findBestAttributes(filename, algo_key, data, attributes)

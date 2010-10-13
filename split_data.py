@@ -126,8 +126,8 @@ def getAccuracy(training_filename, test_filename):
     else:
         return  sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
 
-training_file_base = '.train.2.arff'
-test_file_base = '.test.2.arff'
+training_file_base = '.train.arff'
+test_file_base = '.test.arff'
 
 def showSplit(split_vector):
     """ Returns a string showing a list of booleans """
