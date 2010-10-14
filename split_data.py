@@ -19,7 +19,7 @@ Created on 22/09/2010
 @author: peter
 """
 
-import sys, os, random
+import sys, os, random, logging
 from math import *
 
 import java.io.FileReader as FileReader
@@ -293,8 +293,14 @@ def makeShuffleList(size, max_val):
             shuffle_list.append(i)
     return shuffle_list
 
+def makeSwapList(size):
+    """ Return a list of pairs of random indexes to in range [0,<size>) to be used for swapping 
+        for a random shuffle """
+    shuffle_list = makeShuffleList(2*(size//2), 2*(size//2))
+    return [(shuffle_list[i*2],shuffle_list[i*2+1]) for i in range(len(shuffle_list)//2)]
+
 def crossOver_(c1, c2):
-    """ Swap half the elements in c1 and c2 """
+    """ Swap half the different elements in c1 and c2 """
     assert(len(c1) == len(c2))
     assert(len(c1) > 0)
     assert(len(c2) > 0)
@@ -309,15 +315,17 @@ def crossOver_(c1, c2):
     for i2,x in enumerate(d2):
         if x in d1:
             break
-    m = min(i1, i2)  # number of non-shared elements
-  
-    shuffle_list = makeShuffleList(2*(m//2), 2*(m//2))
-    swaps = [(shuffle_list[i*2],shuffle_list[i*2+1]) for i in range(len(shuffle_list)//2)]
+    num_unique = min(i1, i2)  # number of non-shared elements
 
-    for i,s in enumerate(swaps):
-        assert(s[0] < 2* len(swaps))
-        assert(s[1] < 2* len(swaps))
-        d1[s[0]], d2[s[1]] = d2[s[1]], d1[s[0]] 
+    if False:
+        shuffle_list = makeShuffleList(2*(m//2), 2*(m//2))
+        swaps = [(shuffle_list[i*2],shuffle_list[i*2+1]) for i in range(len(shuffle_list)//2)]
+    
+        for s in swaps:
+            d1[s[0]], d2[s[1]] = d2[s[1]], d1[s[0]]
+    
+    for s in makeSwapList(num_unique):
+        d1[s[0]], d2[s[1]] = d2[s[1]], d1[s[0]]
 
     return (sorted(d1), sorted(d2))
 
@@ -359,13 +367,17 @@ def crossOver(v1, v2, class_distribution):
     assert(len(d2) > 0)
     return [getVector(d, len(v1)) for d in (d1,d2)]
 
-def runGA(base_data, num_instances, test_fraction):
+def runGA(base_data, test_fraction):
     """ Run a genetic algorithm on <base_data> with <num_instances> instances
         and split it into test set of <test_fraction> and training set of 
         1 - <test_fraction> instances 
     """
+
+    num_instances = len(base_data)
+
     # Create just enough to seed the set with a good coverage
-    num_random_samples = 20
+    num_random_samples = 50
+
     results = []
     existing_splits = []
     history_of_best = []
@@ -407,6 +419,7 @@ def runGA(base_data, num_instances, test_fraction):
     best_score = results[class_index]['score']
 
     # The main GA cross-over and selection loop
+    # Try to find make members of the population
     for cnt in range(1000):
         found = False
         for j in range(10):
@@ -462,16 +475,22 @@ def runGA(base_data, num_instances, test_fraction):
     print 'num_random_samples',num_random_samples
     print 'accuracy =', accuracy 
     print showSplit(results[class_index]['split'])
+    logging.info('accuracy = ' + str(accuracy)) 
     for (algo,name) in algo_val_name:
         eval = getEvalAlgo(algo, test_filename, training_filename)
-        print name, '---------------------------------'
+        print '-------------', name, '---------------------------------'
         print eval
+        logging.info('------------- ' + name + ' ---------------------------------')
+        logging.info(eval)
  
 if __name__ == '__main__':
 
     global base_attrs 
     # Set random seed so that each run gives same results
     random.seed(555)
+
+    LOG_FILENAME = 'find.bests.split.log'
+    logging.basicConfig(filename=LOG_FILENAME,level=logging.INFO)
 
     if len(sys.argv) < 3:
         print 'usage: split_data.py <base-file> <test-fraction>'
@@ -485,6 +504,12 @@ if __name__ == '__main__':
     print 'algorithms:', [name for (_,name) in algo_val_name]
     print 'class index:', class_index
     print 'do_worst:', do_worst
+    logging.info('-------------------- START --------------------')
+    logging.info('input file: ' + base_file)
+    logging.info('test fraction: ' + str(test_fraction))
+    logging.info('algorithms: ' + str([name for (_,name) in algo_val_name]))
+    logging.info('class index: ' + str(class_index))
+    logging.info('do_worst file:'  + str(do_worst))
 
     global base_relation
     global base_comments
@@ -494,5 +519,5 @@ if __name__ == '__main__':
     base_data.sort()
 
     print 'base_data', len(base_data), len(base_data[0])
-    runGA(base_data, len(base_data), test_fraction)
+    runGA(base_data, test_fraction)
 
