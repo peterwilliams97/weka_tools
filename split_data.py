@@ -17,6 +17,26 @@ Note: needs WEKA 3.6.x to run (due to changes in the weka.classifiers.Evaluation
 Created on 22/09/2010
 
 @author: peter
+
+Example use
+-----------
+The following batch file
+
+	http://github.com/peterwilliams97/weka_tools/blob/master/find_soybean_split.bat
+	
+runs the Python script in this file on the input data set
+
+	http://github.com/peterwilliams97/weka_tools/blob/master/soybean-large.data.missing.values.replaced.arff
+	
+to create the following two files
+
+	http://github.com/peterwilliams97/weka_tools/blob/master/best.train.arff
+	http://github.com/peterwilliams97/weka_tools/blob/master/best.test.arff
+	
+which give the following classification results
+
+	http://github.com/peterwilliams97/weka_tools/blob/master/soybean_split_results.txt
+
 """
 
 import sys, os, random, logging
