@@ -20,22 +20,34 @@ Created on 22/09/2010
 
 Example use
 -----------
-The following batch file
+The following batch or shell file
 
 	http://github.com/peterwilliams97/weka_tools/blob/master/find_soybean_split.bat
+        http://github.com/peterwilliams97/weka_tools/blob/master/find_soybean_split.sh
 	
 runs the Python script in this file on the input data set
 
-	http://github.com/peterwilliams97/weka_tools/blob/master/soybean-large.data.missing.values.replaced.arff
+	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.arff
 	
 to create the following two files
 
-	http://github.com/peterwilliams97/weka_tools/blob/master/best.train.arff
-	http://github.com/peterwilliams97/weka_tools/blob/master/best.test.arff
+	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.best.test.arff
+	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.best.test.arff
 	
 which give the following classification results
 
-	http://github.com/peterwilliams97/weka_tools/blob/master/soybean_split_results.txt
+	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean.split.results.txt
+        
+whose summary is
+        
+        Classifier  Correct (out of 60) Percentage Correct
+        J48             58              96.67 %
+        BayesNet        59              98.33 %
+        RandomForest    59              98.33 %
+        JRip            60              100 %
+        KStar           60              100 %
+        SMO             60              100 %
+        MLP             60              100 %
 
 """
 
