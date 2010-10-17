@@ -84,7 +84,7 @@ algo_val_name_all = [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48
                         (KStar(), 'KStar'), (RandomForest(), 'RandomForest'), (SMO(),'SMO'), (MLP(),'MLP')]
 # algo_val_name is typically set to some subset of algo_val_name_all
 # e.g.algo_val_name = algo_val_name_all[:4]
-algo_val_name = algo_val_name_all
+algo_val_name = algo_val_name_all[:4]
 algo_list = [a[0] for a in algo_val_name]
 
 def runClassifierAlgo(algo, training_filename, test_filename, do_model, do_eval, do_predict):
@@ -336,13 +336,6 @@ def crossOver_(c1, c2):
             break
     num_unique = min(i1, i2)  # number of non-shared elements
 
-    if False:
-        shuffle_list = makeShuffleList(2*(m//2), 2*(m//2))
-        swaps = [(shuffle_list[i*2],shuffle_list[i*2+1]) for i in range(len(shuffle_list)//2)]
-    
-        for s in swaps:
-            d1[s[0]], d2[s[1]] = d2[s[1]], d1[s[0]]
-    
     for s in makeSwapList(num_unique):
         d1[s[0]], d2[s[1]] = d2[s[1]], d1[s[0]]
 
@@ -363,10 +356,40 @@ def crossOverDist(c1, c2, class_distribution):
     assert(len(d2) > 0)
     return (sorted(d1), sorted(d2))
 
+def mutate_(c, start, end):
+    """ Simple mutation of <c> within range [start,end). Replace 1 element of 
+        c  with a number from [start,end) that is not already in c """
+    if len(c) < 2:
+        return c[:]
+    d = c[:]
+    allow_vals = [i for i in range(start, end)]
+    while True:
+        val = allow_vals[random.randrange(len(allow_vals))]
+        if not val in c:
+            break
+    d[random.randrange(len(d))] = val
+    #print '>>>', c
+    #print '<<<', d
+    assert(sorted(d) != sorted(c))
+    return d
+
+def mutateDist(c, class_distribution):
+    """ Mutate the elements in <c> while preserving the distribution in <class_distribution> """
+    d = []
+    for v in class_distribution.values():
+        cv = [i for i in c if v['start'] <= i and i < v['end']]
+        dv = mutate_(cv, v['start'], v['end'])
+        d = d + dv
+    assert(len(d) > 0)
+    assert(sorted(d) != sorted(c))
+    return sorted(d)
+
 def getIndexes(split_vector):
+    """ Return list of indexes of True elements in boolean list <split_vector> """
     return sorted([i for i,v in enumerate(split_vector) if v])
 
 def getVector(indexes, size):
+    """ Return boolean list of length <size> with elements in <indexes> set True """
     return [i in indexes for i in range(size)]
 
 def uniqueCrossOver_(c1, c2, class_distribution):
@@ -379,12 +402,25 @@ def uniqueCrossOver_(c1, c2, class_distribution):
     raise ValueException('Cannot be here')
 
 def crossOver(v1, v2, class_distribution):
+    """ Return cross-over of <v1>, <v2> that preserves the class distribution in 
+        <class_distribution>
+    """
     c1,c2 = getIndexes(v1), getIndexes(v2)
     assert(c1 != c2)
     d1,d2 = uniqueCrossOver_(c1,c2, class_distribution)
     assert(len(d1) > 0)
     assert(len(d2) > 0)
     return [getVector(d, len(v1)) for d in (d1,d2)]
+
+def mutate(v, class_distribution):
+    """ Return mutation of <v>, that preserves the class distribution in 
+        <class_distribution>
+    """
+    c = getIndexes(v)
+    d = mutateDist(c, class_distribution)
+    assert(d != c)
+    assert(len(d) > 0)
+    return getVector(d, len(v))
 
 def runGA(base_data, test_fraction):
     """ Run a genetic algorithm on <base_data> with <num_instances> instances
@@ -432,8 +468,9 @@ def runGA(base_data, test_fraction):
         print 'num_random_samples',num_random_samples
         print 'accuracy =', accuracy 
         print showSplit(results[class_index]['split'])
-        logging.info('++++++ ' + time.ctime() + ' ++++++ ' + str(final))
+        logging.info('++++++ ' + time.ctime() + ' ++++++ ' + str(final) + ' cnt = ' + str(cnt))
         logging.info('accuracy = ' + str(accuracy)) 
+        logging.info(showSplit(results[class_index]['split']))
         for (algo,name) in algo_val_name:
             eval = getEvalAlgo(algo, test_filename, training_filename)
             print '-------------', name, '---------------------------------'
@@ -466,24 +503,41 @@ def runGA(base_data, test_fraction):
     # Try to find make members of the population
     for cnt in range(1000):
         found = False
-        for j in range(10):
-            i1,i2 = spinRouletteWheelTwice(results)
-            #print (i1,i2),
-            c1,c2 = crossOver(results[i1]['split'], results[i2]['split'], class_distribution)
-            if c1 in existing_splits:
-                c1 = None
-            if c2 in existing_splits:
-                c2 = None
-            if c1==c2:
-                c2 = None
-            if c1 or c2:
-                found = True
-                break
+        # Get best results from all cross-over, no mutation
+        if True:
+            # Try cross-over most of the time
+            for j in range(10):
+                i1,i2 = spinRouletteWheelTwice(results)
+                #print (i1,i2),
+                c1,c2 = crossOver(results[i1]['split'], results[i2]['split'], class_distribution)
+                if c1 in existing_splits:
+                    c1 = None
+                if c2 in existing_splits:
+                    c2 = None
+                if c1==c2:
+                    c2 = None
+                if c1 or c2:
+                    found = True
+                    break
+        else:
+            # Try simple mutation in other cases
+            c2 = None   # It's already None with current code, but code might change in the future
+            for j in range(10):
+                i1 = spinRouletteWheel(results)
+                c1 = mutate(results[i1]['split'], class_distribution)
+                #print showSplit(c1)
+                #print showSplit(results[i1]['split'])
+                if not c1 in existing_splits:
+                    print 'Mutation! ',
+                    found = True
+                    break
+                
         if not found:
             results.sort(key = lambda x: -x['score'])
             print ['%.1f%%' % x['score'] for x in results[:10]]
             print '1. Converged after', cnt, 'GA rounds'
             break
+        
         if c1:
             addSplit(c1)
         if c2: 
@@ -509,7 +563,8 @@ def runGA(base_data, test_fraction):
                 break
             
         showResults(False)
-
+        
+    # All done with the GA
     # Make the split
     test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if do_worst else 'best')
 
