@@ -22,7 +22,7 @@ Results are in the [data](http://github.com/peterwilliams97/weka_tools/tree/mast
 The batch/shell file [find_soybean_split.bat](http://github.com/peterwilliams97/weka_tools/blob/master/find_soybean_split.bat) / [find_soybean_split.sh](http://github.com/peterwilliams97/weka_tools/blob/master/find_soybean_split.sh) runs the [split_data.py](http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.best.train.arff) and [soybean-large.data.orig.arff](http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.best.test.arff) to create the training and test files [soybean-large.data.orig.best.train.arff](http://bit.ly/split_data) and [soybean-large.data.orig.best.test.arf](http://bit.ly/split_data) which give the classification results [soybean.split.results.txt](http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean.split.results.txt) whose summary is
 
 Classifier | Correct (out of 60) | Percentage Correct
------------|---------------------|------------------:
+-----------|---------------------|------------------
 NaiveBayes |     57              | 95 %
 J48        |     58              | 96.67 %
 BayesNet   |     59              | 98.33 %
