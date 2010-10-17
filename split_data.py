@@ -31,7 +31,7 @@ runs the Python script in this file on the input data set
 	
 to create the following two files
 
-	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.best.test.arff
+	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.best.train.arff
 	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.best.test.arff
 	
 which give the following classification results
