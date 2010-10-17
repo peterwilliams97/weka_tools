@@ -20,34 +20,22 @@ Created on 22/09/2010
 
 Example use
 -----------
-The following batch or shell file
+The following batch file
 
 	http://github.com/peterwilliams97/weka_tools/blob/master/find_soybean_split.bat
-        http://github.com/peterwilliams97/weka_tools/blob/master/find_soybean_split.sh
 	
 runs the Python script in this file on the input data set
 
-	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.arff
+	http://github.com/peterwilliams97/weka_tools/blob/master/soybean-large.data.missing.values.replaced.arff
 	
 to create the following two files
 
-	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.best.train.arff
-	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean-large.data.orig.best.test.arff
+	http://github.com/peterwilliams97/weka_tools/blob/master/best.train.arff
+	http://github.com/peterwilliams97/weka_tools/blob/master/best.test.arff
 	
 which give the following classification results
 
-	http://github.com/peterwilliams97/weka_tools/blob/master/data/soybean.split.results.txt
-        
-whose summary is
-        
-        Classifier  Correct (out of 60) Percentage Correct
-        J48             58              96.67 %
-        BayesNet        59              98.33 %
-        RandomForest    59              98.33 %
-        JRip            60              100 %
-        KStar           60              100 %
-        SMO             60              100 %
-        MLP             60              100 %
+	http://github.com/peterwilliams97/weka_tools/blob/master/soybean_split_results.txt
 
 """
 
@@ -531,7 +519,7 @@ def runGA(base_data, test_fraction):
             eval = getEvalAlgo(getAlgoDict()[name], test_filename, training_filename)
             print '-------------', name, '---------------------------------'
             print eval
-            logging.info('------------- ' + name + ' ---------------------------------')
+            logging.info('classifier:' + name + ' ---------------------------------------')
             logging.info(eval)
 
     last_results_flush_time = [time.clock()]
@@ -592,6 +580,7 @@ def runGA(base_data, test_fraction):
             results.sort(key = lambda x: -x['score'])
             print ['%.1f%%' % x['score'] for x in results[:10]]
             print '1. Converged after', cnt, 'GA rounds'
+            logging.info('1. Converged after ' + str(cnt) + ' GA rounds')
             break
         
         if c1:
@@ -616,12 +605,14 @@ def runGA(base_data, test_fraction):
                     break
             if converged:
                 print '2. Converged after', cnt, 'GA rounds'
+                logging.info('2. Converged after ' + str(cnt) + ' GA rounds')
                 break
 
         # Perfect match?
         if best_score >= len(getAlgoDictKeys()) * 100.0 - 1e-3:
             converged = True
             print '3. Converged after', cnt, 'GA rounds, best score =', best_score
+            logging.info('1. Converged after ' + str(cnt) + ' GA rounds, best score =' + str(best_score))
             break
 
         showResults(False)

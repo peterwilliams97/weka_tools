@@ -1,1 +1,1 @@
-jython split_data.py soybean-large.data.orig.arff .2
+jython split_data.py data\soybean-large.data.orig.arff .2
