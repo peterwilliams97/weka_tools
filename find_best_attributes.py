@@ -8,11 +8,14 @@ Created on 27/09/2010
 @author: peter
 """
 
-import sys, os, random, math, time, csv, preprocess_soybeans, weka_classifiers as WC, arff, ga
+import sys, os, random, math, time, csv, preprocess_soybeans, weka_classifiers as WC, arff, ga, misc
 
 verbose = False
 show_results = False
 show_scores = False
+
+# Multi-threaded operation to take advantange of multiple CPU cores
+MULTI_THREADED = False
 
 # The column containing the class
 class_index = 0
@@ -36,17 +39,14 @@ def writeArffForInclusiveSubset(filename, data, attributes, subset):
     data_subset = [[d[i] for i in range(num_attrs) if i in subset] for d in data]
     arff.writeArff(filename, None, 'find_best_attr', attrs_subset, data_subset)
 
-def rm(filename):
-    try:
-        os.remove(training_filename)
-    except:
-        pass
-
 def getAccuracyForInclusiveSubset(algo_key, data, attributes, subset):
+    """ Return accuracy for algorithm with name <algo_key> on <data> and
+        attributes <attributes> for the attribute subset <subset>
+    """
     training_filename = makeFileName('find-best-attr', algo_key, None, 'arff')
     writeArffForInclusiveSubset(training_filename, data, attributes, subset)
     result = WC.getAccuracyAlgoKey(algo_key, class_index, training_filename)
-    rm(training_filename)
+    misc.rm(training_filename)
     return result
 
 def getRandomExcluding(num_values, exclusion_set):
@@ -58,6 +58,7 @@ def getRandomExcluding(num_values, exclusion_set):
 
 def getInclusiveSubset(attributes, exclusive_subset):
     """ Return inclusive subset corresponding to <exlcusive_subset> """
+    #print 'getInclusiveSubset', len(attributes), exclusive_subset
     assert(class_index not in exclusive_subset)
     return [i for i in range(len(attributes)) if i not in exclusive_subset]
 
@@ -70,6 +71,30 @@ def getSubsetResultDict(algo_key, data, attributes, exclusive_subset):
     if verbose or show_scores:
         print 'getSubsetResultDict =>', result['score'], result['subset']
     return result
+
+def getSubsetResultDictList(algo_key, data, attributes, exclusive_subset_list):
+    """ Returns a list of dicts that shows results of running <algo_key> classfier on
+        <data> for (complement of x) <attributes) for x in  <exclusive_subset_list>
+    """
+    assert(None not in exclusive_subset_list)
+    number = len(exclusive_subset_list)
+    inclusive_subset_list = [getInclusiveSubset(attributes, subset) for subset in exclusive_subset_list]
+
+    training_filename_list = [makeFileName('find-best-attr%02d'% i, algo_key, None, 'arff') for i in range(number)]
+    for i in range(number):
+        writeArffForInclusiveSubset(training_filename_list[i], data, attributes, inclusive_subset_list[i])
+
+    score_eval_list = WC.getAccuracyAlgoKeyList(algo_key, class_index, training_filename_list)
+    #print 'score_eval_list', score_eval_list
+
+    for training_filename in training_filename_list:
+        misc.rm(training_filename)
+
+    result_list = [{'subset':exclusive_subset_list[i], 'score':score_eval_list[i][0], 'eval': score_eval_list[i][1]} for i in range(number)]
+    if verbose or show_scores:
+        for result in result_list:
+            print 'getSubsetResultDict =>', result['score'], result['subset']
+    return result_list
 
 def getCsvResultHeader():
     """ Return header for results file """
@@ -98,13 +123,28 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
 
     print base_filename, algo_key, len(attributes), len(previous_results), subset_size
 
-    def addSubset(subset):
-        if subset:
-            if not subset in existing_subsets:
-                r = getSubsetResultDict(algo_key, data, attributes, subset)
+    def addSubsetList(subset_list):
+        subset_list = misc.removeDuplicates([subset for subset in subset_list if subset and subset not in existing_subsets])
+        for subset in subset_list:
+            assert(subset not in existing_subsets)
+        if len(subset_list):
+            r_list = getSubsetResultDictList(algo_key, data, attributes, subset_list)
+            for r in r_list:
                 results.append(r)
-                existing_subsets.append(subset)
-                results.sort(key = lambda x: -x['score'])
+                existing_subsets.append(r['subset'])
+                #print '***r subset=', r['subset'], 'score=', r['score']
+            results.sort(key = lambda x: -x['score'])
+
+    def addSubset(subset):
+        if MULTI_THREADED:
+            addSubsetList([subset])
+        else:
+            if subset:
+                if not subset in existing_subsets:
+                    r = getSubsetResultDict(algo_key, data, attributes, subset)
+                    results.append(r)
+                    existing_subsets.append(subset)
+                    results.sort(key = lambda x: -x['score'])
 
     for s in previous_results:
         assert(len(s['subset']) == subset_size - 1)
@@ -150,7 +190,7 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                     counters[i1] += 1
                 if i2 < len(counters):
                     counters[i2] += 1
-                
+
                 if c1 in existing_subsets:
                     c1 = None
                 if c2 in existing_subsets:
@@ -158,7 +198,7 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                 if c1 or c2:
                     found = True
                     break
-                
+
             if not found:
                 c1 = None 
                 c2 = None
@@ -172,7 +212,7 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                         if verbose:
                             print '***', c1
                         break
-                    
+
             if not found:
                 print '1. Converged after', cnt, 'GA rounds'
                 if verbose:
@@ -183,8 +223,11 @@ def findBestAttributesForSubsetSize(base_filename, algo_key, data, attributes, p
                 #exit()
                 break
 
-            addSubset(c1)
-            addSubset(c2)
+            if MULTI_THREADED:
+                addSubsetList([c1,c2])
+            else:
+                addSubset(c1)
+                addSubset(c2)
 
             # Test for convergence. Top <convergence_number> scores are the sme
             convergence_number = 10
@@ -247,27 +290,23 @@ def findBestAttributes(base_filename, algo_key, data, attributes):
         csv.writeCsv(out_filename, results_matrix, header)
     return series_results
 
-def mkDir(dir):
-    try:
-        os.mkdir(dir)
-    except:
-        pass
-    
+
 if __name__ == '__main__':
     # Set random seed so that each run gives same results
     random.seed(555)
-    
+
     global output_dir
-    
+
+    WC.initWekaAlgoThreads(2)
+
     if len(sys.argv) < 3:
         print 'Usage: jython find_best_attributes.py  <arff-file> <output-dir>'
         sys.exit()
 
     filename = sys.argv[1]
     output_dir = sys.argv[2]
-    
-    mkDir(output_dir)
-   
+
+    misc.mkDir(output_dir)
 
     relation, comments, attributes, data = arff.readArff(filename)
 
@@ -276,4 +315,6 @@ if __name__ == '__main__':
     for algo_key in WC.all_algo_keys:
         print '======================= findBestAttributes:', filename, algo_key 
         findBestAttributes(filename, algo_key, data, attributes)
+
+    WC.killWekaAlgoThreads()
  

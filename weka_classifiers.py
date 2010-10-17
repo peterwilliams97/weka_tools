@@ -24,7 +24,6 @@ import java.util.Random as Random
 import weka.core.Instances as Instances
 import weka.classifiers.Evaluation as Evaluation
 import weka.core.Range as Range
-
 import weka.classifiers.bayes.NaiveBayes as NaiveBayes
 import weka.classifiers.bayes.BayesNet as BayesNet
 import weka.classifiers.functions.MultilayerPerceptron as MLP
@@ -34,6 +33,8 @@ import weka.classifiers.trees.RandomForest as RandomForest
 import weka.classifiers.rules.JRip as JRip
 import weka.classifiers.lazy.KStar as KStar
 import weka.classifiers.meta.MultiBoostAB as MultiBoost
+
+import misc
 
 verbose = False
 
@@ -47,7 +48,12 @@ algo_list = [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48(),'J48'
                  (KStar(), 'KStar'), (RandomForest(), 'RandomForest'), (SMO(),'SMO'), (MLP(),'MLP'), 
                  (getMultiBoost(), 'MultiBoost')]
 algo_dict = dict([(x[1], x[0]) for x in algo_list])
- 
+# Indication of time it takes algo to run. Higher is longer
+algo_duration = {}.fromkeys(algo_dict.keys(), 0)
+algo_duration['SMO'] = 5
+algo_duration['MLP'] = 10
+algo_duration['MultiBoost'] = 15
+
 # Algo keys sorted in order of computation time 
 all_algo_keys = ['NaiveBayes', 'J48', 'BayesNet', 'JRip', 'RandomForest', 'KStar', 'SMO', 'MLP', 'MultiBoost']
 
@@ -188,6 +194,89 @@ def getAccuracyForSplit(base_data, split_vector):
     rm(training_filename)
     rm(test_filename)
     return accuracy
+
+"""
+    Threaded access
+    Computation time in this package is usually limited by the time it takes classifiers to run.
+    Modern computers usually have several CPU cores so we will multi-thread classifiers
+    A request queue for classifications will be processed by an array of threads
+"""
+import Queue
+from threading import Thread
+
+
+class ClassifierThread(Thread):
+    _num_instances = 0
+    
+    def __init__ (self, id):
+        Thread.__init__(self)
+        self._id = id
+        self._num_instances += 1
+
+    def run(self):
+        print 'Starting ClassifierThread', id
+        while True:
+            params = classifier_queue.get()
+            if params == 'die':
+                self._num_instances -= 1
+                return
+            result = getAccuracyAlgoKey(params['algo_key'], params['class_index'], params['training_filename'])
+
+            classifier_queue.task_done()
+            results_queue.put(result)
+
+classifier_queue = Queue.Queue()
+results_queue = Queue.Queue()
+worker_thread_list = []
+
+def initWekaAlgoThreads(num_worker_threads = 0):
+    print 'initMultiThreadWekaAlgos', num_worker_threads
+    if num_worker_threads <= 0:
+        num_cpus = misc.detectNumberCpus()
+        print 'num cpus', num_cpus
+        num_worker_threads = max(1, misc.detectNumberCpus() - 1)
+    print 'num worker_threads', num_worker_threads
+
+    for i in range(num_worker_threads):
+         t = ClassifierThread(i)
+         t.daemon = True
+         t.start()
+         worker_thread_list.append(t)
+
+def killWekaAlgoThreads():
+    while ClassifierThread._num_instances > 0:
+        classifier_queue.put('die')
+
+def processEvalAlgoKeyRequests(params_list):
+    """ Process a list of classifiers in parallel
+        Return when they are all done
+    """
+    # print 'processEvalAlgoKeyRequests', len(params_list), params_list
+    assert(classifier_queue)
+    assert(results_queue)
+    assert(len(worker_thread_list) > 0)
+
+    num_requests = len(params_list)
+    # Run classifiers, slowest first
+    for params in sorted(params_list, key = lambda x: -algo_duration[x['algo_key']]):
+        classifier_queue.put(params)
+
+    if False:
+        return [results_queue.get() for i in range(num_requests)]
+    else:
+        results_list = []
+        for i in range(num_requests):
+            results = results_queue.get()
+            results_list.append(results)
+            results_queue.task_done()
+        return results_list
+
+def getAccuracyAlgoKeyList(algo_key, class_index, training_filename_list):
+    """ Return accuracies of algorithm corresponding to <algo_key> with class index <class_index>
+        for list of files in <training_filename_list>
+    """
+    params_list = [{'algo_key':algo_key, 'class_index':class_index, 'training_filename':fn} for fn in training_filename_list]
+    return processEvalAlgoKeyRequests(params_list)
 
 if __name__ == '__main__':
     pass

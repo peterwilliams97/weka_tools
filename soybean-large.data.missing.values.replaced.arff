@@ -1,6 +1,6 @@
 @relation soybean-weka.filters.unsupervised.attribute.ReplaceMissingValues
 
-@attribute class {diaporthe-stem-canker,charcoal-rot,rhizoctonia-root-rot,phytophthora-rot,brown-stem-rot,powdery-mildew,downy-mildew,brown-spot,bacterial-blight,bacterial-pustule,purple-seed-stain,anthracnose,phyllosticta-leaf-spot,alternarialeaf-spot,frog-eye-leaf-spot,diaporthe-pod-&-stem-blight,cyst-nematode,2-4-d-injury,herbicide-injury}
+@attribute class {diaporthe-stem-canker,charcoal-rot,rhizoctonia-root-rot,phytophthora-rot,brown-stem-rot,powdery-mildew,downy-mildew,brown-spot,bacterial-blight,bacterial-pustule,purple-seed-stain,anthracnose,phyllosticta-leaf-spot,alternarialeaf-spot,frog-eye-leaf-spot,diaporthe-pod-&-stem-blight,cyst-nematode,herbicide-injury}
 @attribute date {april,may,june,july,august,september,october}
 @attribute plant-stand {normal,lt-normal}
 @attribute precip {lt-norm,norm,gt-norm}
@@ -336,7 +336,6 @@ cyst-nematode,july,normal,gt-norm,norm,yes,same-lst-sev-yrs,upper-areas,pot-seve
 cyst-nematode,august,normal,gt-norm,norm,yes,same-lst-sev-yrs,upper-areas,pot-severe,none,80-89,abnorm,abnorm,no-yellow-halos,w-s-marg,gt-1/8,absent,absent,absent,norm,yes,absent,dna,absent,absent,absent,none,absent,few-present,absent,abnorm,absent,absent,lt-norm,absent,galls-cysts
 cyst-nematode,july,normal,gt-norm,norm,yes,same-lst-two-yrs,low-areas,pot-severe,none,80-89,abnorm,abnorm,no-yellow-halos,w-s-marg,gt-1/8,absent,absent,absent,norm,yes,absent,dna,absent,absent,absent,none,absent,few-present,absent,abnorm,absent,absent,lt-norm,absent,galls-cysts
 cyst-nematode,august,normal,gt-norm,norm,yes,same-lst-two-yrs,low-areas,pot-severe,none,80-89,abnorm,abnorm,no-yellow-halos,w-s-marg,gt-1/8,absent,absent,absent,norm,yes,absent,dna,absent,absent,absent,none,absent,few-present,absent,abnorm,absent,absent,lt-norm,absent,galls-cysts
-2-4-d-injury,september,normal,gt-norm,norm,yes,same-lst-two-yrs,low-areas,pot-severe,none,80-89,norm,abnorm,absent,dna,dna,absent,present,absent,abnorm,yes,absent,dna,absent,absent,absent,none,absent,norm,absent,norm,absent,absent,norm,absent,?
 herbicide-injury,may,lt-normal,gt-norm,lt-norm,yes,same-lst-yr,scattered,pot-severe,none,80-89,abnorm,abnorm,no-yellow-halos,no-w-s-marg,gt-1/8,absent,present,absent,abnorm,yes,absent,dna,absent,absent,absent,none,absent,dna,absent,norm,absent,absent,norm,absent,rotted
 herbicide-injury,april,lt-normal,gt-norm,lt-norm,yes,diff-lst-year,whole-field,pot-severe,none,80-89,abnorm,abnorm,absent,dna,dna,absent,present,absent,abnorm,yes,absent,dna,absent,absent,absent,none,absent,dna,absent,norm,absent,absent,norm,absent,rotted
 herbicide-injury,may,lt-normal,gt-norm,lt-norm,yes,diff-lst-year,scattered,pot-severe,none,80-89,abnorm,abnorm,absent,dna,dna,absent,present,absent,abnorm,yes,absent,dna,absent,absent,absent,none,absent,dna,absent,norm,absent,absent,norm,absent,rotted

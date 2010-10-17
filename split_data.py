@@ -39,7 +39,7 @@ which give the following classification results
 
 """
 
-import sys, os, random, logging
+import sys, os, random, logging, time
 from math import *
 
 import java.io.FileReader as FileReader
@@ -61,7 +61,7 @@ import weka.classifiers.rules.JRip as JRip
 import weka.classifiers.lazy.KStar as KStar
 import weka.classifiers.meta.MultiBoostAB as MultiBoost
 
-import arff
+import arff, misc
 
 # The column containing the class
 class_index = 0
@@ -72,6 +72,9 @@ verbose = False
 # If true then try to find worst performer, else try to find best performer
 do_worst = False
 
+# Seconds between flushing results to log. Safety measure for long runs
+RESULTS_FLUSH_PERIOD = 30.0*60.0
+
 def getMultiBoost():
     multi_boost = MultiBoost()
     multi_boost.setOptions(['-W weka.classifiers.functions.SMO'])
@@ -79,6 +82,8 @@ def getMultiBoost():
 
 algo_val_name_all = [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48(),'J48'), (JRip(), 'JRip'),
                         (KStar(), 'KStar'), (RandomForest(), 'RandomForest'), (SMO(),'SMO'), (MLP(),'MLP')]
+# algo_val_name is typically set to some subset of algo_val_name_all
+# e.g.algo_val_name = algo_val_name_all[:4]
 algo_val_name = algo_val_name_all
 algo_list = [a[0] for a in algo_val_name]
 
@@ -176,12 +181,6 @@ def makeTrainingTestSplit(base_data, split_vector, prefix):
     arff.writeArff(test_file_name, base_comments, base_relation, base_attrs, test_data)
     return (training_file_name, test_file_name)
 
-def rm(filename):
-    try:
-        os.remove(filename)
-    except:
-        pass
-
 def getAccuracyForSplit(base_data, split_vector):
     """ Split <base_data> into training and test data sets. Rows with indexes in 
         <split_vector> go into training file and remaining go into test file.
@@ -189,8 +188,8 @@ def getAccuracyForSplit(base_data, split_vector):
     """
     training_filename, test_filename = makeTrainingTestSplit(base_data, split_vector, 'temp')
     accuracy = getAccuracy(training_filename, test_filename)
-    rm(training_filename)
-    rm(test_filename)
+    misc.rm(training_filename)
+    misc.rm(test_filename)
     return accuracy
 
 def getRandomSplit(class_distribution):
@@ -423,7 +422,32 @@ def runGA(base_data, test_fraction):
         if not split_vector in existing_splits:
             results.append(getScoreDict(split_vector))
             existing_splits.append(split_vector)
+    
+    def showResultsBase(final):
+        """ Run classifiers on the split and print out some summary results """
+        accuracy = getAccuracyForSplit(base_data, results[class_index]['split'])
+        print 'Results -----------------------------------------------------'
+        print 'do_worst', do_worst
+        print 'WEIGHT_RATIO', WEIGHT_RATIO
+        print 'num_random_samples',num_random_samples
+        print 'accuracy =', accuracy 
+        print showSplit(results[class_index]['split'])
+        logging.info('++++++ ' + time.ctime() + ' ++++++ ' + str(final))
+        logging.info('accuracy = ' + str(accuracy)) 
+        for (algo,name) in algo_val_name:
+            eval = getEvalAlgo(algo, test_filename, training_filename)
+            print '-------------', name, '---------------------------------'
+            print eval
+            logging.info('------------- ' + name + ' ---------------------------------')
+            logging.info(eval)
 
+    last_results_flush_time = [time.clock()]
+    def showResults(force):
+        """ Log results at least once every RESULTS_FLUSH_PERIOD """
+        if force or time.clock() > last_results_flush_time[0] + RESULTS_FLUSH_PERIOD:
+            showResultsBase(force)
+            last_results_flush_time[0] = time.clock()
+    
     # First create some random vectors
     while len(existing_splits) < num_random_samples:
         # split_vector = getRandomSplit(num_instances, test_fraction)
@@ -483,25 +507,14 @@ def runGA(base_data, test_fraction):
             if converged:
                 print '2. Converged after', cnt, 'GA rounds'
                 break
+            
+        showResults(False)
 
     # Make the split
     test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if do_worst else 'best')
 
-    # Run classifiers on the split and print out some summary results
-    accuracy = getAccuracyForSplit(base_data, results[class_index]['split'])
-    print 'Results -----------------------------------------------------'
-    print 'do_worst', do_worst
-    print 'WEIGHT_RATIO', WEIGHT_RATIO
-    print 'num_random_samples',num_random_samples
-    print 'accuracy =', accuracy 
-    print showSplit(results[class_index]['split'])
-    logging.info('accuracy = ' + str(accuracy)) 
-    for (algo,name) in algo_val_name:
-        eval = getEvalAlgo(algo, test_filename, training_filename)
-        print '-------------', name, '---------------------------------'
-        print eval
-        logging.info('------------- ' + name + ' ---------------------------------')
-        logging.info(eval)
+    showResults(True)
+
  
 if __name__ == '__main__':
 
@@ -517,14 +530,14 @@ if __name__ == '__main__':
         sys.exit()
 
     base_file = sys.argv[1]
-    test_fraction = float(sys.argv[2])  # 0.2
+    test_fraction = float(sys.argv[2])  # eg.h 0.2
     
     print 'input file:', base_file
     print 'test fraction:', test_fraction
     print 'algorithms:', [name for (_,name) in algo_val_name]
     print 'class index:', class_index
     print 'do_worst:', do_worst
-    logging.info('-------------------- START --------------------')
+    logging.info('-------------------- START -------------------- ' + time.ctime())
     logging.info('input file: ' + base_file)
     logging.info('test fraction: ' + str(test_fraction))
     logging.info('algorithms: ' + str([name for (_,name) in algo_val_name]))

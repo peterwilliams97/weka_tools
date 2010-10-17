@@ -60,7 +60,7 @@ relation_pattern = re.compile(r'@RELATION\s*(\S+)\s*$', re.IGNORECASE)
 attr_name_pattern = re.compile(r'@ATTRIBUTE\s*(\S+)\s*\{', re.IGNORECASE)
 attr_vals_pattern = re.compile(r'\{\s*(.+)\s*\}', re.IGNORECASE)
 csv_pattern = re.compile(r'(?:^|,)(\"(?:[^\"]+|\"\")*\"|[^,]*)', re.IGNORECASE)
-    
+
 def readArff(filename):
     """ Read a WEKA .arff file
     Params: 
@@ -71,6 +71,8 @@ def readArff(filename):
         attrs: list of attributes
         data: the actual data
     """
+    print 'readArff(%s)' % filename
+
     lines = file(filename).readlines()
     lines = [l.rstrip('\n').strip() for l in lines]
     lines = [l for l in lines if len(l)]
