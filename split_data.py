@@ -73,7 +73,7 @@ verbose = False
 _global_do_worst = False
 def setDoWorst(worst):
     global _global_do_worst
-    do_worst = worst
+    _global_do_worst = worst
 
 def getDoWorst():
     return _global_do_worst
