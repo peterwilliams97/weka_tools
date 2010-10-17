@@ -70,8 +70,13 @@ class_index = 0
 verbose = False
 
 # If true then try to find worst performer, else try to find best performer
-do_worst = False
+_global_do_worst = False
+def setDoWorst(worst):
+    global _global_do_worst
+    do_worst = worst
 
+def getDoWorst():
+    return _global_do_worst
 # Seconds between flushing results to log. Safety measure for long runs
 RESULTS_FLUSH_PERIOD = 30.0*60.0
 
@@ -80,12 +85,48 @@ def getMultiBoost():
     multi_boost.setOptions(['-W weka.classifiers.functions.SMO'])
     return multi_boost
 
-algo_val_name_all = [(NaiveBayes(), 'NaiveBayes'), (BayesNet(),'BayesNet'), (J48(),'J48'), (JRip(), 'JRip'),
-                        (KStar(), 'KStar'), (RandomForest(), 'RandomForest'), (SMO(),'SMO'), (MLP(),'MLP')]
-# algo_val_name is typically set to some subset of algo_val_name_all
-# e.g.algo_val_name = algo_val_name_all[:4]
-algo_val_name = algo_val_name_all[:4]
-algo_list = [a[0] for a in algo_val_name]
+# Dict of all available classification algorithms
+_algo_dict_all = {
+    'NaiveBayes':NaiveBayes(),
+    'BayesNet':BayesNet(),
+    'J48':J48(),
+    'JRip':JRip(),
+    'KStar':KStar(),
+    'RandomForest':RandomForest(),
+    'SMO':SMO(),
+    'MLP':MLP()
+}
+
+_algo_runtime_order = {
+    'NaiveBayes':1,
+    'BayesNet':2,
+    'J48':3,
+    'JRip':4,
+    'KStar':5,
+    'RandomForest':6,
+    'SMO':10,
+    'MLP':20
+}
+algo_dict_all_keys = sorted(_algo_dict_all.keys(), key = lambda x: _algo_runtime_order[x])
+
+def setAlgoSubset(algo_keys_subset):
+    """ Set the algos that will be used """
+    global algo_dict_used
+    algo_dict_used = {}
+    for key in algo_keys_subset:
+        algo_dict_used[key] = _algo_dict_all[key]
+    print 'setAlgoSubset => ', algo_dict_used.keys()
+
+# algo_dict_used is typically set to some subset of algo_dict_all
+setAlgoSubset(algo_dict_all_keys[:4])
+
+def getAlgoDict():
+    """ Return list of algos that will be tested """
+    return algo_dict_used
+
+def getAlgoDictKeys():
+    """ Return algo_dict_used keys sorted by time it takes to run algo """
+    return sorted(getAlgoDict().keys(), key = lambda x: _algo_runtime_order[x])
 
 def runClassifierAlgo(algo, training_filename, test_filename, do_model, do_eval, do_predict):
     """ Run classifier algorithm <algo> on training data in <training_filename> to build a model
@@ -146,10 +187,11 @@ def getAccuracyAlgo(algo, training_filename, test_filename):
     raise ValueException('Cannot be here')
 
 def getAccuracy(training_filename, test_filename):
-    if do_worst:
-        return len(algo_list)*100.0 - sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
+    algo_values = getAlgoDict().values()
+    if getDoWorst():
+        return len(algo_values)*100.0 - sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_values])
     else:
-        return  sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_list])
+        return  sum([getAccuracyAlgo(algo, training_filename, test_filename) for algo in algo_values])
 
 training_file_base = '.train.arff'
 test_file_base = '.test.arff'
@@ -463,16 +505,18 @@ def runGA(base_data, test_fraction):
         """ Run classifiers on the split and print out some summary results """
         accuracy = getAccuracyForSplit(base_data, results[class_index]['split'])
         print 'Results -----------------------------------------------------'
-        print 'do_worst', do_worst
+        print 'do_worst', getDoWorst()
         print 'WEIGHT_RATIO', WEIGHT_RATIO
         print 'num_random_samples',num_random_samples
         print 'accuracy =', accuracy 
         print showSplit(results[class_index]['split'])
+        print  'test indexes =' + str(getIndexes(results[class_index]['split']))
         logging.info('++++++ ' + time.ctime() + ' ++++++ ' + str(final) + ' cnt = ' + str(cnt))
         logging.info('accuracy = ' + str(accuracy)) 
         logging.info(showSplit(results[class_index]['split']))
-        for (algo,name) in algo_val_name:
-            eval = getEvalAlgo(algo, test_filename, training_filename)
+        logging.info('test indexes =' + str(getIndexes(results[class_index]['split'])))
+        for name in getAlgoDictKeys():
+            eval = getEvalAlgo(getAlgoDict()[name], test_filename, training_filename)
             print '-------------', name, '---------------------------------'
             print eval
             logging.info('------------- ' + name + ' ---------------------------------')
@@ -496,7 +540,7 @@ def runGA(base_data, test_fraction):
 
     # Write out the best result in case we crash
     results.sort(key = lambda x: -x['score'])
-    test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if do_worst else 'best')
+    test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if getDoWorst() else 'best')
     best_score = results[class_index]['score']
 
     # The main GA cross-over and selection loop
@@ -548,7 +592,7 @@ def runGA(base_data, test_fraction):
         results.sort(key = lambda x: -x['score'])
         print ['%.1f%%' % x['score'] for x in results[:10]]
         if results[class_index]['score'] > best_score:
-            test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if do_worst else 'best')
+            test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if getDoWorst() else 'best')
             best_score = results[class_index]['score']
 
         history_of_best.append(results[class_index]['score'])
@@ -561,15 +605,34 @@ def runGA(base_data, test_fraction):
             if converged:
                 print '2. Converged after', cnt, 'GA rounds'
                 break
-            
+
+        # Perfect match?
+        if best_score >= len(getAlgoDictKeys()) * 100.0 - 1e-3:
+            converged = True
+            print '3. Converged after', cnt, 'GA rounds, best score =', best_score
+            break
+
         showResults(False)
         
     # All done with the GA
     # Make the split
-    test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if do_worst else 'best')
+    test_filename, training_filename = makeTrainingTestSplit(base_data, results[class_index]['split'], 'worst' if getDoWorst() else 'best')
 
     showResults(True)
 
+def getArgs():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', action='store', dest='simple_value',  help='Store a simple value')
+    parser.add_argument('-c', action='store_const', dest='constant_value',  const='value-to-store',   help='Store a constant value')
+    parser.add_argument('-t', action='store_true', default=False,  dest='boolean_switch', help='Set a switch to true')
+    parser.add_argument('-f', action='store_false', default=False, dest='boolean_switch', help='Set a switch to false')
+    parser.add_argument('-a', action='append', dest='collection', default=[], help='Add repeated values to a list')
+    parser.add_argument('-A', action='append_const', dest='const_collection', const='value-1-to-append',
+                    default=[],     help='Add different values to list')
+    parser.add_argument('-B', action='append_const', dest='const_collection', const='value-2-to-append',  help='Add different values to list')
+    parser.add_argument('--version', action='version', version='%(prog)s 1.0')
+    results = parser.parse_args()
  
 if __name__ == '__main__':
 
@@ -586,26 +649,47 @@ if __name__ == '__main__':
 
     base_file = sys.argv[1]
     test_fraction = float(sys.argv[2])  # eg.h 0.2
-    
-    print 'input file:', base_file
-    print 'test fraction:', test_fraction
-    print 'algorithms:', [name for (_,name) in algo_val_name]
-    print 'class index:', class_index
-    print 'do_worst:', do_worst
-    logging.info('-------------------- START -------------------- ' + time.ctime())
-    logging.info('input file: ' + base_file)
-    logging.info('test fraction: ' + str(test_fraction))
-    logging.info('algorithms: ' + str([name for (_,name) in algo_val_name]))
-    logging.info('class index: ' + str(class_index))
-    logging.info('do_worst file:'  + str(do_worst))
+    test_individually = False
+    if len(sys.argv) > 3:
+        test_individually = int(sys.argv[3])
+        print '!!!'
+
+    start_description = '@@ Starting ' + sys.argv[0] + ' at ' + time.ctime() + ' with args ' + str(sys.argv[1:])
+    print start_description
+    logging.info(start_description)
 
     global base_relation
     global base_comments
 
     base_relation, base_comments, base_attrs, base_data = arff.readArff(base_file)
-
     base_data.sort()
-
     print 'base_data', len(base_data), len(base_data[0])
-    runGA(base_data, test_fraction)
+
+    print 'all algorithms:', algo_dict_all_keys
+
+    def doOneRun():
+        print '-------------------- START -------------------- ' + time.ctime()
+        print 'input file:', base_file
+        print 'test fraction:', test_fraction
+        print 'algorithms:', getAlgoDictKeys()
+        print 'class index:', class_index
+        print 'do worst:', getDoWorst()
+        logging.info('-------------------- START -------------------- ' + time.ctime())
+        logging.info('input file: ' + base_file)
+        logging.info('test fraction: ' + str(test_fraction))
+        logging.info('algorithms: ' + str(getAlgoDictKeys()))
+        logging.info('class index: ' + str(class_index))
+        logging.info('do_worst '  + str(getDoWorst()))
+        runGA(base_data, test_fraction)
+
+    if test_individually:
+        for algo_key in algo_dict_all_keys: 
+            for do_worst in (False, True): 
+                setAlgoSubset([algo_key])
+                setDoWorst(do_worst)
+                doOneRun()
+    else:
+        setAlgoSubset(algo_dict_all.keys())
+        setDoWorst(False)
+        doOneRun()
 
