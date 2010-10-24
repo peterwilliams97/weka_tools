@@ -39,7 +39,7 @@ which give the following classification results
 
 """
 
-import sys, os, random, logging, time
+import sys, os, random, logging, time, optparse
 from math import *
 
 import java.io.FileReader as FileReader
@@ -116,9 +116,6 @@ def setAlgoSubset(algo_keys_subset):
     for key in algo_keys_subset:
         algo_dict_used[key] = _algo_dict_all[key]
     print 'setAlgoSubset => ', algo_dict_used.keys()
-
-# algo_dict_used is typically set to some subset of algo_dict_all
-setAlgoSubset(algo_dict_all_keys[:4])
 
 def getAlgoDict():
     """ Return list of algos that will be tested """
@@ -623,20 +620,6 @@ def runGA(base_data, test_fraction):
 
     showResults(True)
 
-def getArgs():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-s', action='store', dest='simple_value',  help='Store a simple value')
-    parser.add_argument('-c', action='store_const', dest='constant_value',  const='value-to-store',   help='Store a constant value')
-    parser.add_argument('-t', action='store_true', default=False,  dest='boolean_switch', help='Set a switch to true')
-    parser.add_argument('-f', action='store_false', default=False, dest='boolean_switch', help='Set a switch to false')
-    parser.add_argument('-a', action='append', dest='collection', default=[], help='Add repeated values to a list')
-    parser.add_argument('-A', action='append_const', dest='const_collection', const='value-1-to-append',
-                    default=[],     help='Add different values to list')
-    parser.add_argument('-B', action='append_const', dest='const_collection', const='value-2-to-append',  help='Add different values to list')
-    parser.add_argument('--version', action='version', version='%(prog)s 1.0')
-    results = parser.parse_args()
- 
 if __name__ == '__main__':
 
     global base_attrs 
@@ -646,19 +629,60 @@ if __name__ == '__main__':
     LOG_FILENAME = 'find.bests.split.log'
     logging.basicConfig(filename=LOG_FILENAME,level=logging.INFO)
 
-    if len(sys.argv) < 3:
-        print 'usage: split_data.py <base-file> <test-fraction>'
+    usage = ['usage: jython split_data.py [options] <base-file>',
+             'available classifers = ' + ', '.join(algo_dict_all_keys),
+             'default classifers = ' + ', '.join(algo_dict_all_keys[:3])]
+    parser = optparse.OptionParser('\n\t'.join(usage))
+    parser.add_option('-c', '--classifiers', dest='algo_keys',  default=','.join(algo_dict_all_keys[:3]), type='string', help='classifiers used')
+    parser.add_option('-a', '--all', action='store_true', dest='use_all', default=False, help='use all classifiers')
+    parser.add_option('-f', '--fraction', dest='test_fraction', default=0.2, type='float', help='fraction of data in test set')
+    parser.add_option('-w', '--worst', action='store_true', dest='do_worst', default=False, help='find split with worst accuracy')
+    parser.add_option('-b', '--best_worst', action='store_true', dest='do_best_worst', default=False, help='find splits with best & worst accuracy')
+    parser.add_option('-l', '--list', action='store_true', dest='show_classifiers', default=False, help='show list of available classifiers')
+    parser.add_option('-i', '--individual', action='store_true', dest='test_individually', default=False, help='get splits for performance on individual classifiers')
+
+    (options, args) = parser.parse_args()
+
+    if options.show_classifiers:
+        print len(algo_dict_all_keys), 'available WEKA classifiers'
+        for algo_key in algo_dict_all_keys:
+            print algo_key
         sys.exit()
 
-    base_file = sys.argv[1]
-    test_fraction = float(sys.argv[2])  # eg.h 0.2
-    test_individually = False
-    if len(sys.argv) > 3:
-        test_individually = int(sys.argv[3])
-        print '!!!'
+    if len(args) != 1:
+        print parser.usage
+        print 'options:', options
+        print 'args', args
+        sys.exit()
+
+    base_file = args[0]
+
+    if options.use_all:
+        algo_keys = algo_dict_all_keys
+    else:
+        all_algo_keys_upper = [k.upper() for k in algo_dict_all_keys]
+        algo_keys_upper = [k.strip().upper() for k in options.algo_keys.split(',')]
+        #print 'options.algo_keys', options.algo_keys
+        #print 'options.algo_keys.split(',')', options.algo_keys.split(',')
+        #print 'algo_keys_upper', algo_keys_upper
+        algo_keys_upper = sorted([k for k in algo_keys_upper if k in all_algo_keys_upper], key = lambda x: all_algo_keys_upper.index(x))
+        #print 'algo_keys_upper', algo_keys_upper
+        algo_keys = [k for k in algo_dict_all_keys if k.upper() in algo_keys_upper]
+        #print 'algo_keys', algo_keys
+
+    # Worst list, False = do best, True = do worst
+    worst_list = [False]  # default
+    if options.do_worst:
+        worst_list = [True]
+    if options.do_best_worst:
+        worst_list = [False, True]
 
     start_description = '@@ Starting ' + sys.argv[0] + ' at ' + time.ctime() + ' with args ' + str(sys.argv[1:])
     print start_description
+    print 'base file', base_file
+    print 'algo keys', algo_keys
+    print 'worst list', worst_list
+
     logging.info(start_description)
 
     global base_relation
@@ -668,31 +692,31 @@ if __name__ == '__main__':
     base_data.sort()
     print 'base_data', len(base_data), len(base_data[0])
 
-    print 'all algorithms:', algo_dict_all_keys
+    print 'classifer algorithms used:', algo_keys
 
     def doOneRun():
         print '-------------------- START -------------------- ' + time.ctime()
         print 'input file:', base_file
-        print 'test fraction:', test_fraction
+        print 'test fraction:', options.test_fraction
         print 'algorithms:', getAlgoDictKeys()
         print 'class index:', class_index
         print 'do worst:', getDoWorst()
         logging.info('-------------------- START -------------------- ' + time.ctime())
         logging.info('input file: ' + base_file)
-        logging.info('test fraction: ' + str(test_fraction))
+        logging.info('test fraction: ' + str(options.test_fraction))
         logging.info('algorithms: ' + str(getAlgoDictKeys()))
         logging.info('class index: ' + str(class_index))
         logging.info('do_worst '  + str(getDoWorst()))
-        runGA(base_data, test_fraction)
+        runGA(base_data, options.test_fraction)
 
-    if test_individually:
-        for algo_key in algo_dict_all_keys: 
+    if options.test_individually:
+        for key in algo_keys: 
             for do_worst in (False, True): 
-                setAlgoSubset([algo_key])
+                setAlgoSubset([key])
                 setDoWorst(do_worst)
                 doOneRun()
     else:
-        setAlgoSubset(algo_dict_all.keys())
+        setAlgoSubset(algo_keys)
         setDoWorst(False)
         doOneRun()
 
