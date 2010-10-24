@@ -662,13 +662,8 @@ if __name__ == '__main__':
     else:
         all_algo_keys_upper = [k.upper() for k in algo_dict_all_keys]
         algo_keys_upper = [k.strip().upper() for k in options.algo_keys.split(',')]
-        #print 'options.algo_keys', options.algo_keys
-        #print 'options.algo_keys.split(',')', options.algo_keys.split(',')
-        #print 'algo_keys_upper', algo_keys_upper
         algo_keys_upper = sorted([k for k in algo_keys_upper if k in all_algo_keys_upper], key = lambda x: all_algo_keys_upper.index(x))
-        #print 'algo_keys_upper', algo_keys_upper
         algo_keys = [k for k in algo_dict_all_keys if k.upper() in algo_keys_upper]
-        #print 'algo_keys', algo_keys
 
     # Worst list, False = do best, True = do worst
     worst_list = [False]  # default
@@ -711,12 +706,13 @@ if __name__ == '__main__':
 
     if options.test_individually:
         for key in algo_keys: 
-            for do_worst in (False, True): 
+            for do_worst in worst_list: 
                 setAlgoSubset([key])
                 setDoWorst(do_worst)
                 doOneRun()
     else:
         setAlgoSubset(algo_keys)
-        setDoWorst(False)
-        doOneRun()
+        for do_worst in worst_list: 
+            setDoWorst(do_worst)
+            doOneRun()
 
