@@ -1,0 +1,1 @@
+jython find_correlations.py f:\kaggle\unimelb\unimelb_training.many.arff -o f:\kaggle\unimelb\output

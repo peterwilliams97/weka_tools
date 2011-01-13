@@ -33,6 +33,10 @@ def applyWeights(roulette_in):
     if False:
         print 'len(roulette) =', len(roulette)
         print 'sum weights =', sum([x['weight'] for x in roulette])
+    if abs(sum([x['weight'] for x in roulette]) - 1.0) >= 1e-6:
+        print len(roulette), roulette
+        print sum([x['weight'] for x in roulette])
+        print sum([x['weight'] for x in roulette]) -1.0
     assert(abs(sum([x['weight'] for x in roulette]) - 1.0) < 1e-6)
     return sorted(roulette, key = lambda x: -x['weight'])
 

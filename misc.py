@@ -8,9 +8,17 @@ Created on 15/10/2010
 """
 import os
 
-def rm(filename):
+def quote(s):
+    return '<<' + s + '>>'
+
+def checkExists(file_path):
+    if not os.path.exists(file_path):
+        print file_path, 'does not exist'
+        exit()
+        
+def rm(file_path):
     try:
-        os.remove(filename)
+        os.remove(file_path)
     except:
         pass
 
@@ -52,6 +60,23 @@ def removeDuplicates(a_list):
     for a in a_list[1:]:
         if not a in out:
             out.append(a)
+    return out
+
+def transpose(arr2d):
+    """ Transpose a 2d array """
+    width = len(arr2d[0])
+    for row in arr2d[1:]:
+        assert(len(row) == width)
+    columns = [[] for i in range(width)]
+    for row in arr2d:
+        for i in range(width):
+            columns[i].append(row[i])
+    return columns
+
+def padRight(arr, width, pad_val):
+    out = arr[:]
+    while len(out) < width:
+        out.append(pad_val)
     return out
 
 if __name__ == '__main__':
