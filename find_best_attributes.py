@@ -115,10 +115,10 @@ def getCsvResultRow(result, attributes, is_inclusive):
     assert(isinstance(result['score'], float))
     #-1 is for the class attribute
     num_attrs = str(len(attributes) -1 - len(result['subset']))
-    inclusive_subset = getInclusiveSubset(attributes, result['subset'], is_inclusive)
+    inclusive_subset = [i for i in  getInclusiveSubset(attributes, result['subset'], is_inclusive) if i != class_index]
     included_attributes = ';'.join([attributes[i]['name'] for i in inclusive_subset])
     accuracy = '%.03f' % (result['score']/100.0)
-    return [num_attrs, accuracy, included_attributes]
+    return [str(len(inclusive_subset)), accuracy, included_attributes]
 
 candidates_per_round = 100
 
@@ -288,7 +288,8 @@ def findBestAttributes(output_dir, base_filename, algo_key, data, attributes, is
     num_attrs_start = 1 if is_inclusive else 0
 
     # Loop through all sizes of subsets of attributes, largest first
-    for subset_size in range(num_attrs_start, num_attrs_start + num_attrs):
+    # Go hhel way !@#$
+    for subset_size in range(num_attrs_start, (num_attrs_start + num_attrs + 1)//2):
         if subset_size == num_attrs_start:
             if is_inclusive:
                 results = [getSubsetResultDict(output_dir, algo_key, data, attributes, [class_index, i], True) for i in range(num_attrs) if i != class_index]
@@ -305,6 +306,12 @@ def findBestAttributes(output_dir, base_filename, algo_key, data, attributes, is
         header = getCsvResultHeader()
         results_matrix = [getCsvResultRow(r, attributes, is_inclusive) for r in series_results]
         csv.writeCsv(out_filename, results_matrix, header)
+        
+        out_num_attrs_filename = makeFileName(output_dir, base_filename, algo_key + '.%02d'%subset_size, -1, 'csv')
+        header = getCsvResultHeader()
+        results_matrix = [getCsvResultRow(r, attributes, is_inclusive) for r in results[:100]]
+        csv.writeCsv(out_num_attrs_filename, results_matrix, header)
+        
     return series_results
 
 

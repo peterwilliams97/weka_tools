@@ -69,11 +69,9 @@ def runClassifierAlgo(algo, class_index, training_filename, test_filename, do_mo
         http://weka.wikispaces.com/Generating+classifier+evaluation+output+manually
         http://weka.sourceforge.net/doc.dev/weka/classifiers/Evaluation.html
     """
-    print 'runClassifierAlgo:'
-    print ' training_filename:', training_filename
-    print ' test_filename:', test_filename
+    print ' runClassifierAlgo: training_filename= ', training_filename, ', test_filename=', test_filename
     misc.checkExists(training_filename)
-    
+
     training_file = FileReader(training_filename)
     training_data = Instances(training_file)
     if test_filename:

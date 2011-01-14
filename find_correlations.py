@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     #find_best_attributes.findBestAttributes(options.output_dir, filename, 'NaiveBayes', data, attributes, True)
     
-    for algo_key in WC.all_algo_keys:
+    for algo_key in WC.all_algo_keys[2:]:
         print '======================= findBestAttributes:', filename, algo_key 
         find_best_attributes.findBestAttributes(options.output_dir, filename, algo_key, data, attributes, True)
 
