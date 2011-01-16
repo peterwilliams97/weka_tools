@@ -1,1 +1,2 @@
-python explore_unimelb.py -k f:\kaggle\unimelb\unimelb_training.csv
+rem python explore_unimelb.py -k f:\kaggle\unimelb\unimelb_training.csv
+python explore_unimelb.py -k f:\kaggle\unimelb\unimelb_training.csv -s "Number.of.Unsuccessful.Grant,Number.of.Successful.Grant,Contract.Value.Band...see.note.A,Start.date,Sponsor.Code,Person.ID"

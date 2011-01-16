@@ -33,8 +33,11 @@ if __name__ == '__main__':
     relation, comments, attributes, data = arff.readArff(filename)
 
     #find_best_attributes.findBestAttributes(options.output_dir, filename, 'NaiveBayes', data, attributes, True)
+    #print WC.all_algo_keys
+    #exit()
     
-    for algo_key in WC.all_algo_keys[2:]:
+    #for algo_key in WC.all_algo_keys[2:]:
+    for algo_key in ['JRip', 'NaiveBayes', 'RandomForest', 'KStar','SMO', 'MLP', 'MultiBoost',  'J48', 'BayesNet',  ]:
         print '======================= findBestAttributes:', filename, algo_key 
         find_best_attributes.findBestAttributes(options.output_dir, filename, algo_key, data, attributes, True)
 

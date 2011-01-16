@@ -116,7 +116,7 @@ def getCsvResultRow(result, attributes, is_inclusive):
     #-1 is for the class attribute
     num_attrs = str(len(attributes) -1 - len(result['subset']))
     inclusive_subset = [i for i in  getInclusiveSubset(attributes, result['subset'], is_inclusive) if i != class_index]
-    included_attributes = ';'.join([attributes[i]['name'] for i in inclusive_subset])
+    included_attributes = ','.join([attributes[i]['name'] for i in inclusive_subset])
     accuracy = '%.03f' % (result['score']/100.0)
     return [str(len(inclusive_subset)), accuracy, included_attributes]
 
@@ -289,7 +289,7 @@ def findBestAttributes(output_dir, base_filename, algo_key, data, attributes, is
 
     # Loop through all sizes of subsets of attributes, largest first
     # Go hhel way !@#$
-    for subset_size in range(num_attrs_start, (num_attrs_start + num_attrs + 1)//2):
+    for subset_size in range(num_attrs_start, (len(attributes) + 3)//4):
         if subset_size == num_attrs_start:
             if is_inclusive:
                 results = [getSubsetResultDict(output_dir, algo_key, data, attributes, [class_index, i], True) for i in range(num_attrs) if i != class_index]

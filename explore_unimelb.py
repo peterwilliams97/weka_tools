@@ -94,6 +94,7 @@ if __name__ == '__main__':
     #parser.add_option('-f', '--first', dest='first_col', default='0', help='first column')
     parser.add_option('-k', '--keys', action='store_true', dest='show_keys', default=False, help='display all keys')
     #parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=False, help='show details in output')
+    parser.add_option('-s', '--subset', dest='subset_keys', default='', help='comma separated list of keys to include')
         
     (options, args) = parser.parse_args()
     if len(args) < 1:
@@ -103,22 +104,30 @@ if __name__ == '__main__':
         exit()
 
     inname = args[0]
-    outname = os.path.splitext(inname)[0] + '.many.arff'
-  
+    subset = None
+    if len(options.subset_keys):
+        subset = [x.strip() for x in options.subset_keys.split(',') if len(x.strip()) > 0]
+    if subset:
+        outname = os.path.splitext(inname)[0] + '.subset[%s]' % ','.join(subset)
+    else:
+        outname = os.path.splitext(inname)[0] + '.many'
+
     data_dict = cleanDictKeysAndVals(csv.readCsvAsDict(inname))
     data_dict_many = filterDict(data_dict, lambda k,v: getNumElements(v) >= len(data_dict['Person.ID'])/2)
     data_dict_many = filterDict(data_dict_many, lambda k,v: getNumElementsWithFreq(v,3) >= 2)
+    if subset:
+        data_dict_many = filterDict(data_dict, lambda k,v: k in subset + ['Grant.Status'])
     data_dict_many['Grant.Status'] = data_dict['Grant.Status']
-    
+
     #showStats(data_dict)
     showStats(data_dict_many)
-    
+
     date_strings = data_dict['Start.date']
     dates = ['%.2f' % stringToDate(x) for x in date_strings]
     print 'dates', sorted(dates)[::100]
     # Convert dates to numbers that Weka can understand
     data_dict_many['Start.date'] = dates
-    
+
     numeric_keys = ['SEO.Percentage.1', 
                     'RFCD.Percentage.1',
                     'Number.of.Unsuccessful.Grant',
@@ -143,7 +152,8 @@ if __name__ == '__main__':
 
     print header
 
-    arff.writeArff2(outname, None, 'relation', header, attrs, data_many[:10000])
+    arff.writeArff2(outname + '.arff', None, 'relation', header, attrs, data_many[:10000])
+    csv.writeCsv(outname + '.csv', data_many, header)
 
     if False:
         name = 'SEO.Code.4'

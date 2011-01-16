@@ -113,8 +113,8 @@ def writeCsv(filename, in_matrix, header = None):
 	""" Writes a 2d array to a CSV file """
 	matrix = [header] + in_matrix if header else in_matrix
 	print 'writeCsv:', filename, len(matrix), len(matrix[0])
-	print header
-	print in_matrix
+	#print header
+	#print in_matrix
 	f = open(filename, 'w')
 	for row in matrix:
 		writeCsvRow(f, row)
