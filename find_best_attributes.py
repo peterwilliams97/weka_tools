@@ -122,7 +122,8 @@ def getCsvResultRow(result, attributes, is_inclusive):
 
 candidates_per_round = 100
 
-def findBestAttributesForSubsetSize(output_dir, base_filename, algo_key, data, attributes, previous_results, subset_size, is_inclusive):
+def findBestAttributesForSubsetSize(output_dir, base_filename, algo_key, data, attributes, previous_results, 
+                                    subset_size, is_inclusive, best_previous_subsets):
     """ One round. Start with best <n-1> results and use these to seed the <n> round 
         <previous_results> are <n-1> results
     """
@@ -162,6 +163,8 @@ def findBestAttributesForSubsetSize(output_dir, base_filename, algo_key, data, a
 
     """ Populate subsets with previous best plus other elements """
     subsets = []
+    for subset in best_previous_subsets:
+        addSubset(subset)
     done = False
     for r in previous_best:
         for i in range(len(attributes)):
@@ -192,6 +195,8 @@ def findBestAttributesForSubsetSize(output_dir, base_filename, algo_key, data, a
 
     print results
     assert(len(results) >= 2)
+    
+
 
     if subset_size > 1:
         counters = [0]*20
@@ -284,7 +289,28 @@ def findBestAttributes(output_dir, base_filename, algo_key, data, attributes, is
 
     # Track results for each round
     series_results = []
+    # Track best results in each round for back-tracking. This makes series_results redundant
+    all_results = []
+    
 
+    def getBestPreviousSubsets(subset_size):
+        """ Construct best subset of size <subset_size> from top performers of each smaller subset size """
+        best_previous_subsets = []
+        for results in all_results:
+            subset = set()
+            for r in results:
+                part_subset = [i for i in r['subset'] if i != class_index]
+                for i in part_subset:
+                    subset.add(i)
+                    if len(subset) >= subset_size: break
+                if len(subset) >= subset_size: break
+            if len(subset) == subset_size:
+                subset.add(class_index)
+                best_previous_subsets.append(sorted(subset))
+        print 'best_previous_subsets =', best_previous_subsets
+        return best_previous_subsets
+                    
+        
     num_attrs_start = 1 if is_inclusive else 0
 
     # Loop through all sizes of subsets of attributes, largest first
@@ -293,13 +319,15 @@ def findBestAttributes(output_dir, base_filename, algo_key, data, attributes, is
         if subset_size == num_attrs_start:
             if is_inclusive:
                 results = [getSubsetResultDict(output_dir, algo_key, data, attributes, [class_index, i], True) for i in range(num_attrs) if i != class_index]
-                results.sort(key = lambda x: -x['score'])
             else:
                 results = [getSubsetResultDict(output_dir, algo_key, data, attributes, [], is_inclusive)]
         else:
-            results = findBestAttributesForSubsetSize(output_dir, base_filename, algo_key, data, attributes, results, subset_size, is_inclusive)
+            best_previous_subsets = getBestPreviousSubsets(subset_size) if is_inclusive else []
+            results = findBestAttributesForSubsetSize(output_dir, base_filename, algo_key, data, attributes, results, subset_size, is_inclusive, best_previous_subsets)
+        results.sort(key = lambda x: -x['score'])
         results[0]['num_attrs'] = num_attrs-subset_size
         series_results.append(results[0])
+        all_results.append(results[:100])
 
         # Write out the results
         out_filename = makeFileName(output_dir, base_filename, algo_key, -1, 'csv')
